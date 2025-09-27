@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from 'wouter'
-import { Search, Home, FolderOpen, Package, Globe, Users, UserCheck, Settings, BookOpen, ExternalLink, Plus, Upload, X, Menu, BarChart3 } from 'lucide-react'
+import { Search, Home, FolderOpen, Package, Globe, Users, UserCheck, Settings, BookOpen, ExternalLink, Plus, Upload, X, Menu, BarChart3, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useQuery } from '@tanstack/react-query'
+import { useAuth } from '@/hooks/useAuth'
 import type { Project } from '@shared/schema'
 
 interface NavItemProps {
@@ -226,17 +228,61 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
         </div>
       </div>
 
-      {/* Install Replit */}
-      <div className="p-4">
+      {/* User Profile */}
+      <UserProfile />
+    </div>
+  )
+}
+
+function UserProfile() {
+  const { user } = useAuth();
+
+  if (!user) {
+    return null;
+  }
+
+  const displayName = user.firstName && user.lastName 
+    ? `${user.firstName} ${user.lastName}`
+    : user.email || 'User';
+
+  const initials = user.firstName && user.lastName
+    ? `${user.firstName[0]}${user.lastName[0]}`
+    : user.email 
+    ? user.email[0].toUpperCase()
+    : 'U';
+
+  return (
+    <div className="p-4 border-t border-sidebar-border">
+      <div className="flex items-center gap-3">
+        <Avatar className="h-8 w-8">
+          <AvatarImage src={user.profileImageUrl || undefined} alt={displayName} />
+          <AvatarFallback className="text-xs">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+        
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-sidebar-foreground truncate">
+            {displayName}
+          </p>
+          {user.email && (
+            <p className="text-xs text-muted-foreground truncate">
+              {user.email}
+            </p>
+          )}
+        </div>
+
         <Button 
           variant="ghost" 
-          size="sm" 
-          className="w-full justify-start text-sm font-normal"
-          data-testid="button-install-replit"
+          size="icon" 
+          className="h-8 w-8 hover:bg-sidebar-accent"
+          onClick={() => window.location.href = '/api/logout'}
+          data-testid="button-logout"
+          title="Sign out"
         >
-          Install Replit on
+          <LogOut className="w-4 h-4" />
         </Button>
       </div>
     </div>
-  )
+  );
 }
