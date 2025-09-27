@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from 'wouter'
-import { Search, Home, FolderOpen, Package, Globe, Users, UserCheck, Settings, BookOpen, ExternalLink, Plus, Upload, X } from 'lucide-react'
+import { Search, Home, FolderOpen, Package, Globe, Users, UserCheck, Settings, BookOpen, ExternalLink, Plus, Upload, X, Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
@@ -99,13 +99,22 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
   return (
     <div className="w-64 h-screen bg-sidebar border-r border-sidebar-border flex flex-col">
       {/* Logo */}
-      <div className="p-4">
+      <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
             <span className="text-primary-foreground font-bold text-sm">R</span>
           </div>
           <span className="font-semibold text-sidebar-foreground">Replit</span>
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 hover:bg-sidebar-accent"
+          aria-label="Toggle sidebar"
+          data-testid="button-sidebar-toggle"
+        >
+          <Menu className="w-4 h-4" />
+        </Button>
       </div>
 
       {/* Search */}
