@@ -146,17 +146,27 @@ export class MemStorage implements IStorage {
     const personalApps: InsertApp[] = [
       {
         workspaceId: personalWorkspace.id,
+        title: "CashflowRetro",
+        creator: "NickCo2",
+        isPublished: "true",
+        backgroundColor: "bg-gradient-to-br from-orange-400 to-red-500",
+        gitInitialized: "false"
+      },
+      {
+        workspaceId: personalWorkspace.id,
         title: "EventScraper",
         creator: "NickCo2",
         isPublished: "false",
-        backgroundColor: "bg-gradient-to-br from-orange-400 to-red-500"
+        backgroundColor: "bg-gradient-to-br from-orange-400 to-red-500",
+        gitInitialized: "false"
       },
       {
         workspaceId: personalWorkspace.id,
         title: "VetConnect",
         creator: "NickCo2",
         isPublished: "false",
-        backgroundColor: "bg-gradient-to-br from-blue-500 to-purple-600"
+        backgroundColor: "bg-gradient-to-br from-blue-500 to-purple-600",
+        gitInitialized: "false"
       }
     ];
 
@@ -167,14 +177,16 @@ export class MemStorage implements IStorage {
         title: "ClearWaterOps",
         creator: "TeamAcme",
         isPublished: "true",
-        backgroundColor: "bg-gradient-to-br from-green-400 to-blue-500"
+        backgroundColor: "bg-gradient-to-br from-green-400 to-blue-500",
+        gitInitialized: "false"
       },
       {
         workspaceId: teamWorkspace.id,
         title: "ReplShowcase",
         creator: "TeamAcme",
         isPublished: "false",
-        backgroundColor: "bg-gradient-to-br from-purple-400 to-pink-500"
+        backgroundColor: "bg-gradient-to-br from-purple-400 to-pink-500",
+        gitInitialized: "false"
       }
     ];
     

@@ -129,7 +129,7 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
   // Note: No longer passing app search results to parent component
   // as onSearchResults expects Project[] but we're now searching App[]
   return (
-    <div className="w-64 h-screen bg-sidebar border-r border-sidebar-border flex flex-col shrink-0">
+    <div className="w-64 h-screen bg-background border-r border-sidebar-border flex flex-col shrink-0">
       {/* Header */}
       <div className="flex items-center justify-between" style={{ paddingLeft: '6px', paddingRight: '8px', paddingTop: '12px', paddingBottom: '12px' }}>
         <div className="flex items-center gap-2">
