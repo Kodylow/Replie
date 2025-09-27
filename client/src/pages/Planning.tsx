@@ -33,7 +33,7 @@ export default function Planning() {
   const [isTyping, setIsTyping] = useState(false);
   const [hasStartedChat, setHasStartedChat] = useState(false);
 
-  // Extract project idea from URL parameters and auto-start chat
+  // Extract project idea from URL parameters
   useEffect(() => {
     const urlParams = new URLSearchParams(location.split('?')[1] || '');
     const ideaParam = urlParams.get('idea');
@@ -41,10 +41,15 @@ export default function Planning() {
       const decodedIdea = decodeURIComponent(ideaParam);
       setUserMessage(decodedIdea);
       setHasStartedChat(true);
-      // Auto-start the chat with the user's message
-      chatMutation.mutate(decodedIdea);
     }
   }, [location]);
+
+  // Auto-start the chat when message is set
+  useEffect(() => {
+    if (userMessage && hasStartedChat && !conversationId && !isTyping && !replieResponse) {
+      chatMutation.mutate(userMessage);
+    }
+  }, [userMessage, hasStartedChat, conversationId, isTyping, replieResponse]);
 
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
@@ -66,6 +71,9 @@ export default function Planning() {
     },
     onError: (error) => {
       console.error('Chat error:', error);
+      // Fallback to generated planning response when API fails
+      setReplieResponse(generatePlanningResponse());
+      setShowModeSelection(true);
       setIsTyping(false);
     },
   });

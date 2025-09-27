@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useLocation } from 'wouter';
 import { Paperclip, Link, ChevronDown, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { CategorySelector } from './CategorySelector';
 import { categories, getRandomBackgroundColor, type CategoryId } from '@/lib/utils/projectUtils';
 import { useProjectManagement } from '@/hooks/useProjectManagement';
+import { useToast } from '@/hooks/use-toast';
 import type { InsertProject } from '@shared/schema';
 
 interface ProjectCreationFormProps {
@@ -17,26 +19,20 @@ interface ProjectCreationFormProps {
 export function ProjectCreationForm({ onProjectCreated }: ProjectCreationFormProps) {
   const [projectIdea, setProjectIdea] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<CategoryId>('web');
-  const { createProject, isCreating } = useProjectManagement();
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
 
-  const handleStartChat = async () => {
+  const handleStartChat = () => {
     if (!projectIdea.trim()) return;
 
-    const projectData: Omit<InsertProject, 'workspaceId'> = {
-      title: projectIdea.trim(),
-      description: `A ${categories.find(c => c.id === selectedCategory)?.label.toLowerCase()} project`,
-      category: selectedCategory,
-      isPrivate: 'true',
-      backgroundColor: getRandomBackgroundColor()
-    };
-    
-    try {
-      await createProject.mutateAsync(projectData);
-      setProjectIdea('');
-      onProjectCreated?.();
-    } catch (error) {
-      // Error handling is done in the hook
-    }
+    const encodedIdea = encodeURIComponent(projectIdea.trim());
+    setProjectIdea('');
+    toast({
+      title: 'Starting planning session...',
+      description: 'Let me help you plan your project.'
+    });
+    // Navigate to planning page with project idea
+    setLocation(`/planning?idea=${encodedIdea}`);
   };
 
   return (
@@ -51,7 +47,7 @@ export function ProjectCreationForm({ onProjectCreated }: ProjectCreationFormPro
               onKeyDown={(e) => {
                 if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                   e.preventDefault();
-                  if (projectIdea.trim() && !isCreating) {
+                  if (projectIdea.trim()) {
                     handleStartChat();
                   }
                 }
@@ -98,21 +94,12 @@ export function ProjectCreationForm({ onProjectCreated }: ProjectCreationFormPro
               <Button
                 size="sm"
                 onClick={handleStartChat}
-                disabled={!projectIdea.trim() || isCreating}
+                disabled={!projectIdea.trim()}
                 data-testid="button-start-chat"
                 className="flex items-center gap-2 h-8"
               >
-                {isCreating ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4" />
-                    Start chat
-                  </>
-                )}
+                <Send className="w-4 h-4" />
+                Start chat
               </Button>
               
             </div>
