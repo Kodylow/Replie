@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useLocation } from 'wouter'
 import { ArrowRight, Globe, Database, Gamepad2, Layers, Bot } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -62,6 +63,7 @@ interface MainContentProps {
 }
 
 export default function MainContent({ searchResults, isSearching = false }: MainContentProps) {
+  const [, setLocation] = useLocation()
   const [projectIdea, setProjectIdea] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('web')
   const [editingProject, setEditingProject] = useState<Project | null>(null)
@@ -276,7 +278,7 @@ export default function MainContent({ searchResults, isSearching = false }: Main
                     timeAgo={formatTimeAgo(new Date(project.updatedAt))}
                     isPrivate={project.isPrivate === 'true'}
                     backgroundColor={project.backgroundColor}
-                    onClick={() => console.log(`Opening project: ${project.title}`)}
+                    onClick={() => setLocation(`/project/${project.id}`)}
                     onEdit={() => setEditingProject(project)}
                     onDelete={() => setDeletingProject(project)}
                   />
