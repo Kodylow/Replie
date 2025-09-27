@@ -1,10 +1,15 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertProjectSchema, insertAppSchema, insertWorkspaceSchema, insertWorkspaceMemberSchema, createTeamSchema, updateProfileSchema, githubImportSchema } from "@shared/schema";
+import { insertProjectSchema, insertAppSchema, insertWorkspaceSchema, insertWorkspaceMemberSchema, createTeamSchema, updateProfileSchema, githubImportSchema, zipImportSchema, templateCloneSchema } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { z } from "zod";
 import { Octokit } from '@octokit/rest';
+import multer from 'multer';
+import AdmZip from 'adm-zip';
+import path from 'path';
+import fs from 'fs/promises';
+import os from 'os';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware setup
@@ -751,6 +756,308 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Error importing GitHub repository:", error);
       res.status(500).json({ error: "Failed to import repository" });
+    }
+  });
+
+  // Multer configuration for ZIP file uploads
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: 50 * 1024 * 1024, // 50MB limit
+      files: 1, // Only one file at a time
+    },
+    fileFilter: (req, file, cb) => {
+      // Validate file type
+      if (file.mimetype === 'application/zip' || 
+          file.mimetype === 'application/x-zip-compressed' ||
+          file.originalname.toLowerCase().endsWith('.zip')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only ZIP files are allowed'));
+      }
+    },
+  });
+
+  // ZIP File Import
+  app.post("/api/import/zip", isAuthenticated, upload.single('zipFile'), async (req: any, res) => {
+    let tempDir: string | null = null;
+    
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Check if file was uploaded
+      if (!req.file) {
+        return res.status(400).json({ 
+          error: "No file uploaded", 
+          message: "Please select a ZIP file to upload." 
+        });
+      }
+
+      // Parse and validate form data
+      let validatedData;
+      try {
+        const formData = {
+          workspaceId: req.body.workspaceId,
+          projectName: req.body.projectName,
+          projectDescription: req.body.projectDescription,
+          category: req.body.category || 'web',
+          isPrivate: req.body.isPrivate === 'true' || req.body.isPrivate === true,
+        };
+        validatedData = zipImportSchema.parse(formData);
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({ 
+            error: "Validation failed", 
+            details: error.errors 
+          });
+        }
+        throw error;
+      }
+      
+      // Check if user is a member of the target workspace
+      const isMember = await storage.isWorkspaceMember(validatedData.workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to workspace" });
+      }
+
+      // Create temporary directory for extraction
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'zip-import-'));
+      
+      // Extract ZIP file
+      let zip: AdmZip;
+      let zipEntries: AdmZip.IZipEntry[];
+      
+      try {
+        zip = new AdmZip(req.file.buffer);
+        zipEntries = zip.getEntries();
+        
+        // Validate ZIP file has content
+        if (zipEntries.length === 0) {
+          return res.status(400).json({ 
+            error: "Empty ZIP file", 
+            message: "The uploaded ZIP file is empty or corrupted." 
+          });
+        }
+
+        // Check for security issues (path traversal attacks)
+        for (const entry of zipEntries) {
+          const entryPath = entry.entryName;
+          if (entryPath.includes('..') || path.isAbsolute(entryPath)) {
+            return res.status(400).json({ 
+              error: "Invalid ZIP file", 
+              message: "ZIP file contains invalid file paths." 
+            });
+          }
+        }
+
+        // Extract all files
+        zip.extractAllTo(tempDir, true);
+        
+      } catch (error) {
+        console.error("Error extracting ZIP file:", error);
+        return res.status(400).json({ 
+          error: "Invalid ZIP file", 
+          message: "Unable to extract ZIP file. The file may be corrupted." 
+        });
+      }
+
+      // Analyze extracted content
+      const extractedFiles = await getFileStructure(tempDir);
+      const projectLanguage = detectProjectLanguage(extractedFiles);
+      
+      // Create project with import metadata
+      const projectData = {
+        workspaceId: validatedData.workspaceId,
+        title: validatedData.projectName,
+        description: validatedData.projectDescription || `Imported from ${req.file.originalname}`,
+        category: validatedData.category,
+        isPrivate: validatedData.isPrivate ? 'true' : 'false',
+        importSource: 'zip' as const,
+        importUrl: null, // No URL for ZIP uploads
+        importBranch: null, // No branch for ZIP uploads
+      };
+
+      const project = await storage.createProject(projectData);
+
+      // Clean up temporary directory
+      if (tempDir) {
+        await fs.rm(tempDir, { recursive: true, force: true });
+        tempDir = null;
+      }
+
+      res.status(201).json({
+        ...project,
+        message: "ZIP file imported successfully",
+        extractedInfo: {
+          fileName: req.file.originalname,
+          fileSize: req.file.size,
+          extractedFiles: extractedFiles.length,
+          detectedLanguage: projectLanguage,
+        }
+      });
+
+    } catch (error) {
+      // Clean up temporary directory on error
+      if (tempDir) {
+        try {
+          await fs.rm(tempDir, { recursive: true, force: true });
+        } catch (cleanupError) {
+          console.error("Error cleaning up temporary directory:", cleanupError);
+        }
+      }
+
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Validation failed", 
+          details: error.errors 
+        });
+      }
+      
+      console.error("Error importing ZIP file:", error);
+      res.status(500).json({ 
+        error: "Failed to import ZIP file",
+        message: error instanceof Error ? error.message : "An unexpected error occurred"
+      });
+    }
+  });
+
+  // Helper function to get file structure
+  async function getFileStructure(dirPath: string): Promise<string[]> {
+    const files: string[] = [];
+    
+    async function scanDirectory(currentPath: string, relativePath: string = '') {
+      const entries = await fs.readdir(currentPath, { withFileTypes: true });
+      
+      for (const entry of entries) {
+        const fullPath = path.join(currentPath, entry.name);
+        const relativeFile = relativePath ? path.join(relativePath, entry.name) : entry.name;
+        
+        if (entry.isDirectory()) {
+          await scanDirectory(fullPath, relativeFile);
+        } else {
+          files.push(relativeFile);
+        }
+      }
+    }
+    
+    await scanDirectory(dirPath);
+    return files;
+  }
+
+  // Helper function to detect project language/type
+  function detectProjectLanguage(files: string[]): string {
+    const fileExtensions = files.map(file => path.extname(file).toLowerCase());
+    const filenames = files.map(file => path.basename(file).toLowerCase());
+    
+    // Check for specific project files
+    if (filenames.includes('package.json')) return 'JavaScript/Node.js';
+    if (filenames.includes('requirements.txt') || filenames.includes('pyproject.toml')) return 'Python';
+    if (filenames.includes('cargo.toml')) return 'Rust';
+    if (filenames.includes('go.mod')) return 'Go';
+    if (filenames.includes('composer.json')) return 'PHP';
+    if (filenames.includes('gemfile')) return 'Ruby';
+    if (filenames.includes('pom.xml') || filenames.includes('build.gradle')) return 'Java';
+    if (filenames.includes('mix.exs')) return 'Elixir';
+    
+    // Check by file extensions
+    if (fileExtensions.includes('.js') || fileExtensions.includes('.ts') || fileExtensions.includes('.jsx') || fileExtensions.includes('.tsx')) {
+      return 'JavaScript/TypeScript';
+    }
+    if (fileExtensions.includes('.py')) return 'Python';
+    if (fileExtensions.includes('.rs')) return 'Rust';
+    if (fileExtensions.includes('.go')) return 'Go';
+    if (fileExtensions.includes('.php')) return 'PHP';
+    if (fileExtensions.includes('.rb')) return 'Ruby';
+    if (fileExtensions.includes('.java')) return 'Java';
+    if (fileExtensions.includes('.cpp') || fileExtensions.includes('.c') || fileExtensions.includes('.h')) return 'C/C++';
+    if (fileExtensions.includes('.cs')) return 'C#';
+    if (fileExtensions.includes('.html') || fileExtensions.includes('.css')) return 'Web';
+    
+    return 'Unknown';
+  }
+
+  // Template routes
+  
+  // Get all templates
+  app.get("/api/templates", isAuthenticated, async (req: any, res) => {
+    try {
+      const { category, search } = req.query;
+      
+      let templates;
+      if (search) {
+        templates = await storage.searchTemplates(search as string, category as string);
+      } else if (category) {
+        templates = await storage.getTemplatesByCategory(category as string);
+      } else {
+        templates = await storage.getAllTemplates();
+      }
+      
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching templates:", error);
+      res.status(500).json({ error: "Failed to fetch templates" });
+    }
+  });
+
+  // Clone a template to create a new project
+  app.post("/api/import/clone", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = templateCloneSchema.parse(req.body);
+      
+      // Check if user is a member of the target workspace
+      const isMember = await storage.isWorkspaceMember(validatedData.workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to workspace" });
+      }
+
+      // Get the template
+      const template = await storage.getTemplate(validatedData.templateId);
+      if (!template) {
+        return res.status(404).json({ 
+          error: "Template not found", 
+          message: "The selected template could not be found." 
+        });
+      }
+
+      // Create new project based on template
+      const project = await storage.createProject({
+        workspaceId: validatedData.workspaceId,
+        title: validatedData.projectName,
+        description: validatedData.projectDescription || template.description,
+        category: template.category,
+        isPrivate: validatedData.isPrivate ? 'true' : 'false',
+        backgroundColor: template.backgroundColor,
+        importSource: 'clone',
+        importUrl: `template:${template.id}`,
+        importBranch: null,
+      });
+
+      // Increment template usage count
+      await storage.incrementTemplateUsage(template.id);
+
+      res.status(201).json({
+        ...project,
+        message: "Template cloned successfully",
+        sourceTemplate: {
+          id: template.id,
+          title: template.title,
+          category: template.category
+        }
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Validation failed", 
+          details: error.errors 
+        });
+      }
+      
+      console.error("Error cloning template:", error);
+      res.status(500).json({ 
+        error: "Failed to clone template",
+        message: error instanceof Error ? error.message : "An unexpected error occurred"
+      });
     }
   });
 

@@ -75,6 +75,24 @@ export const apps = pgTable("apps", {
   updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
 });
 
+// Templates table - predefined project templates for cloning
+export const templates = pgTable("templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  category: text("category").notNull(), // 'web', 'data', 'game', 'general', 'agents'
+  tags: text("tags").array().notNull().default(sql`ARRAY[]::text[]`), // tech stack tags like ['React', 'TypeScript']
+  backgroundColor: text("background_color").notNull().default('bg-gradient-to-br from-blue-500 to-purple-600'),
+  iconName: text("icon_name"), // lucide icon name for display
+  usageCount: text("usage_count").notNull().default('0'), // number of times cloned
+  difficulty: text("difficulty").notNull().default('beginner'), // 'beginner', 'intermediate', 'advanced'
+  estimatedTime: text("estimated_time"), // e.g. '30 minutes', '2 hours'
+  fileStructure: jsonb("file_structure"), // JSON structure representing files and folders
+  isOfficial: text("is_official").notNull().default('true'), // 'true' or 'false' for official Replit templates
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
   updatedAt: true,
@@ -87,6 +105,12 @@ export const insertProjectSchema = createInsertSchema(projects).omit({
 });
 
 export const insertAppSchema = createInsertSchema(apps).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTemplateSchema = createInsertSchema(templates).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -110,6 +134,8 @@ export type InsertProject = z.infer<typeof insertProjectSchema>;
 export type Project = typeof projects.$inferSelect;
 export type InsertApp = z.infer<typeof insertAppSchema>;
 export type App = typeof apps.$inferSelect;
+export type InsertTemplate = z.infer<typeof insertTemplateSchema>;
+export type Template = typeof templates.$inferSelect;
 export type InsertWorkspace = z.infer<typeof insertWorkspaceSchema>;
 export type Workspace = typeof workspaces.$inferSelect;
 export type InsertWorkspaceMember = z.infer<typeof insertWorkspaceMemberSchema>;
@@ -164,3 +190,25 @@ export const githubImportSchema = z.object({
 });
 
 export type GitHubImportRequest = z.infer<typeof githubImportSchema>;
+
+// ZIP import request schema
+export const zipImportSchema = z.object({
+  workspaceId: z.string().min(1, "Workspace is required"),
+  projectName: z.string().min(1, "Project name is required"),
+  projectDescription: z.string().optional(),
+  category: z.enum(['web', 'data', 'game', 'general', 'agents']).default('web'),
+  isPrivate: z.boolean().default(true),
+});
+
+export type ZipImportRequest = z.infer<typeof zipImportSchema>;
+
+// Template clone request schema
+export const templateCloneSchema = z.object({
+  templateId: z.string().min(1, "Template is required"),
+  workspaceId: z.string().min(1, "Workspace is required"),
+  projectName: z.string().min(1, "Project name is required"),
+  projectDescription: z.string().optional(),
+  isPrivate: z.boolean().default(true),
+});
+
+export type TemplateCloneRequest = z.infer<typeof templateCloneSchema>;
