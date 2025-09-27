@@ -9,6 +9,9 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useAuth } from '@/hooks/useAuth'
+import { useWorkspace } from '@/contexts/WorkspaceContext'
 import {
   Table,
   TableBody,
@@ -89,13 +92,20 @@ export default function Apps({ searchResults = [], isSearching }: AppsProps) {
   const [deletingApp, setDeletingApp] = useState<App | null>(null)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [newAppTitle, setNewAppTitle] = useState('')
-  const [newAppCreator, setNewAppCreator] = useState('')
+  const [newAppWorkspaceId, setNewAppWorkspaceId] = useState('')
+  const [newAppVisibility, setNewAppVisibility] = useState<'private' | 'public'>('private')
   const { toast } = useToast()
+  const { user } = useAuth()
+  const { workspaces, currentWorkspace } = useWorkspace()
 
-  // Fetch all apps
+  // Fetch all apps for current workspace
   const { data: apps = [], isLoading } = useQuery<App[]>({
-    queryKey: ['/api/apps'],
-    queryFn: () => fetch('/api/apps').then(res => res.json())
+    queryKey: ['/api/workspaces', currentWorkspace?.id, 'apps'],
+    queryFn: () => {
+      if (!currentWorkspace) return []
+      return fetch(`/api/workspaces/${currentWorkspace.id}/apps`).then(res => res.json())
+    },
+    enabled: !!currentWorkspace
   })
 
   // Filter apps locally (ignore shared search for now since it's project-focused)
@@ -120,21 +130,23 @@ export default function Apps({ searchResults = [], isSearching }: AppsProps) {
 
   // Create app mutation
   const createAppMutation = useMutation({
-    mutationFn: async (appData: InsertApp) => {
-      const response = await fetch('/api/apps', {
+    mutationFn: async (appData: InsertApp & { workspaceId: string }) => {
+      const { workspaceId, ...appDataWithoutWorkspaceId } = appData
+      const response = await fetch(`/api/workspaces/${workspaceId}/apps`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(appData)
+        body: JSON.stringify(appDataWithoutWorkspaceId)
       })
       if (!response.ok) throw new Error('Failed to create app')
       return response.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/apps'] })
-      queryClient.invalidateQueries({ queryKey: ['/api/apps/search'], exact: false })
+      queryClient.invalidateQueries({ queryKey: ['/api/workspaces', newAppWorkspaceId, 'apps'] })
+      queryClient.invalidateQueries({ queryKey: ['/api/workspaces'], exact: false })
       setCreateDialogOpen(false)
       setNewAppTitle('')
-      setNewAppCreator('')
+      setNewAppWorkspaceId('')
+      setNewAppVisibility('private')
       toast({
         title: 'App created!',
         description: 'Your app has been created successfully.'
@@ -162,8 +174,8 @@ export default function Apps({ searchResults = [], isSearching }: AppsProps) {
       return response.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/apps'] })
-      queryClient.invalidateQueries({ queryKey: ['/api/apps/search'], exact: false })
+      queryClient.invalidateQueries({ queryKey: ['/api/workspaces', currentWorkspace?.id, 'apps'] })
+      queryClient.invalidateQueries({ queryKey: ['/api/workspaces'], exact: false })
       setEditDialogOpen(false)
       setEditingApp(null)
       toast({
@@ -190,8 +202,8 @@ export default function Apps({ searchResults = [], isSearching }: AppsProps) {
       if (!response.ok) throw new Error('Failed to delete app')
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/apps'] })
-      queryClient.invalidateQueries({ queryKey: ['/api/apps/search'], exact: false })
+      queryClient.invalidateQueries({ queryKey: ['/api/workspaces', currentWorkspace?.id, 'apps'] })
+      queryClient.invalidateQueries({ queryKey: ['/api/workspaces'], exact: false })
       setDeletingApp(null)
       toast({
         title: 'App deleted!',
@@ -218,15 +230,21 @@ export default function Apps({ searchResults = [], isSearching }: AppsProps) {
   }
 
   const handleCreateApp = () => {
+    // Set default workspace to current workspace
+    if (currentWorkspace) {
+      setNewAppWorkspaceId(currentWorkspace.id)
+    }
     setCreateDialogOpen(true)
   }
 
   const handleSaveNewApp = () => {
-    if (newAppTitle.trim() && newAppCreator.trim()) {
+    if (newAppTitle.trim() && newAppWorkspaceId && user) {
       const appData: InsertApp = {
         title: newAppTitle.trim(),
-        creator: newAppCreator.trim(),
+        creator: user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.email || 'Unknown User',
+        workspaceId: newAppWorkspaceId,
         isPublished: 'false',
+        isPrivate: newAppVisibility === 'private' ? 'true' : 'false',
         backgroundColor: getRandomBackgroundColor()
       }
       createAppMutation.mutate(appData)
@@ -431,14 +449,31 @@ export default function Apps({ searchResults = [], isSearching }: AppsProps) {
               />
             </div>
             <div>
-              <Label htmlFor="app-creator">Creator</Label>
-              <Input
-                id="app-creator"
-                placeholder="Enter creator name"
-                value={newAppCreator}
-                onChange={(e) => setNewAppCreator(e.target.value)}
-                data-testid="input-new-app-creator"
-              />
+              <Label htmlFor="app-workspace">Workspace</Label>
+              <Select value={newAppWorkspaceId} onValueChange={setNewAppWorkspaceId}>
+                <SelectTrigger data-testid="select-workspace">
+                  <SelectValue placeholder="Select workspace" />
+                </SelectTrigger>
+                <SelectContent>
+                  {workspaces.map((workspace) => (
+                    <SelectItem key={workspace.id} value={workspace.id}>
+                      {workspace.name} ({workspace.type})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="app-visibility">Visibility</Label>
+              <Select value={newAppVisibility} onValueChange={(value: 'private' | 'public') => setNewAppVisibility(value)}>
+                <SelectTrigger data-testid="select-visibility">
+                  <SelectValue placeholder="Select visibility" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="private">Private</SelectItem>
+                  <SelectItem value="public">Public</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex justify-end gap-2 pt-4">
               <Button 
@@ -450,7 +485,7 @@ export default function Apps({ searchResults = [], isSearching }: AppsProps) {
               </Button>
               <Button 
                 onClick={handleSaveNewApp}
-                disabled={!newAppTitle.trim() || !newAppCreator.trim() || createAppMutation.isPending}
+                disabled={!newAppTitle.trim() || !newAppWorkspaceId || createAppMutation.isPending}
                 data-testid="button-save-new-app"
               >
                 {createAppMutation.isPending ? 'Creating...' : 'Create App'}

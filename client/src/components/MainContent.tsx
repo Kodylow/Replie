@@ -18,6 +18,7 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
 import { useToast } from '@/hooks/use-toast'
 import { useWorkspace } from '@/contexts/WorkspaceContext'
+import { useAuth } from '@/hooks/useAuth'
 import CategoryButton from './CategoryButton'
 import ProjectCard from './ProjectCard'
 import ProjectEditDialog from './ProjectEditDialog'
@@ -72,6 +73,7 @@ export default function MainContent({ searchResults, isSearching = false }: Main
   const [deletingProject, setDeletingProject] = useState<Project | null>(null)
   const { toast } = useToast()
   const { currentWorkspace, isLoading: workspaceLoading } = useWorkspace()
+  const { user } = useAuth()
 
   // Fetch projects from current workspace
   const { data: allProjects = [], isLoading, refetch } = useQuery<Project[]>({
@@ -85,7 +87,7 @@ export default function MainContent({ searchResults, isSearching = false }: Main
 
   // Create project mutation
   const createProjectMutation = useMutation({
-    mutationFn: async (projectData: InsertProject) => {
+    mutationFn: async (projectData: Omit<InsertProject, 'workspaceId'>) => {
       if (!currentWorkspace) throw new Error('No workspace selected')
       const response = await fetch(`/api/workspaces/${currentWorkspace.id}/projects`, {
         method: 'POST',
@@ -194,7 +196,7 @@ export default function MainContent({ searchResults, isSearching = false }: Main
 
   const handleStartChat = () => {
     if (projectIdea.trim()) {
-      const projectData: InsertProject = {
+      const projectData: Omit<InsertProject, 'workspaceId'> = {
         title: projectIdea.trim(),
         description: `A ${categories.find(c => c.id === selectedCategory)?.label.toLowerCase()} project`,
         category: selectedCategory,
@@ -208,7 +210,7 @@ export default function MainContent({ searchResults, isSearching = false }: Main
 
   return (
     <div className="flex-1 overflow-auto">
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="max-w-4xl mx-auto px-6 py-16 md:py-24">
         {/* Workspace Dropdown */}
         <div className="flex justify-center mb-8">
           <Button 
@@ -229,7 +231,7 @@ export default function MainContent({ searchResults, isSearching = false }: Main
         {/* Greeting */}
         <div className="text-center mb-8">
           <h1 className="text-2xl font-semibold text-foreground mb-6">
-            Hi Kody, what do you want to make?
+            {`Hi ${user?.firstName ?? 'there'}, what do you want to make?`}
           </h1>
           
           {/* Project Idea Input */}

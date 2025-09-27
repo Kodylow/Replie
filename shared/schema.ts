@@ -65,6 +65,7 @@ export const apps = pgTable("apps", {
   title: text("title").notNull(),
   creator: text("creator").notNull(),
   isPublished: text("is_published").notNull().default('false'), // 'true' or 'false' as text
+  isPrivate: text("is_private").notNull().default('true'), // 'true' or 'false' as text
   backgroundColor: text("background_color").notNull().default('bg-gradient-to-br from-blue-500 to-purple-600'),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
   updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
