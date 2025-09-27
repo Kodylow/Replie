@@ -288,3 +288,46 @@ export const appFilesSaveSchema = z.object({
 export type AppFileContentRequest = z.infer<typeof appFileContentSchema>;
 export type AppFileSaveRequest = z.infer<typeof appFileSaveSchema>;
 export type AppFilesSaveRequest = z.infer<typeof appFilesSaveSchema>;
+
+// Agent system schemas
+export const agentChatMessageSchema = z.object({
+  id: z.string(),
+  role: z.enum(['user', 'assistant', 'system']),
+  content: z.string(),
+  agentType: z.enum(['manager', 'shepherd', 'advisor', 'architect', 'editor']).optional(),
+  createdAt: z.string(),
+});
+
+export const agentActionSchema = z.object({
+  type: z.enum(['file_edit', 'file_create', 'file_delete', 'analysis', 'recommendation']),
+  target: z.string(), // filename or component
+  content: z.string(),
+  reason: z.string(),
+});
+
+export const agentDelegationSchema = z.object({
+  to: z.enum(['manager', 'shepherd', 'advisor', 'architect', 'editor']),
+  reason: z.string(),
+  context: z.string(),
+});
+
+export const agentRequestSchema = z.object({
+  appId: z.string().min(1, "App ID is required"),
+  workspaceId: z.string().min(1, "Workspace ID is required"),
+  userMessage: z.string().min(1, "User message is required"),
+  fileContents: z.record(z.string(), z.string()),
+  conversationHistory: z.array(agentChatMessageSchema).default([]),
+});
+
+export const agentResponseSchema = z.object({
+  content: z.string(),
+  actions: z.array(agentActionSchema).optional(),
+  shouldDelegate: agentDelegationSchema.optional(),
+  completed: z.boolean(),
+});
+
+export type AgentChatMessage = z.infer<typeof agentChatMessageSchema>;
+export type AgentAction = z.infer<typeof agentActionSchema>;
+export type AgentDelegation = z.infer<typeof agentDelegationSchema>;
+export type AgentRequest = z.infer<typeof agentRequestSchema>;
+export type AgentResponse = z.infer<typeof agentResponseSchema>;

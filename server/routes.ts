@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertProjectSchema, insertAppSchema, insertWorkspaceSchema, insertWorkspaceMemberSchema, createTeamSchema, updateProfileSchema, githubImportSchema, zipImportSchema, templateCloneSchema, planningChatSchema, modeSelectionSchema, appFileContentSchema, appFileSaveSchema, appFilesSaveSchema } from "@shared/schema";
+import { insertProjectSchema, insertAppSchema, insertWorkspaceSchema, insertWorkspaceMemberSchema, createTeamSchema, updateProfileSchema, githubImportSchema, zipImportSchema, templateCloneSchema, planningChatSchema, modeSelectionSchema, appFileContentSchema, appFileSaveSchema, appFilesSaveSchema, agentRequestSchema } from "@shared/schema";
 import OpenAI from 'openai';
 import { ObjectStorageService, ObjectNotFoundError, objectStorageClient } from './objectStorage';
 import { setupAuth, isAuthenticated } from "./replitAuth";
@@ -1563,6 +1563,370 @@ Keep responses conversational, friendly, and focused on planning. Ask 2-3 clarif
       }
       console.error("Error in mode selection:", error);
       res.status(500).json({ error: "Failed to process mode selection" });
+    }
+  });
+
+  // Agent system prompts
+  const getAgentSystemPrompt = (agentType: string): string => {
+    const prompts: Record<string, string> = {
+      manager: `You are the Manager Agent responsible for coordinating the multi-agent system.
+Your role is to:
+- Analyze incoming requests and determine the best agent to handle them
+- Break down complex tasks into manageable subtasks
+- Coordinate between different agents
+- Ensure tasks are completed efficiently
+- Make strategic decisions about approach and priority
+
+Always respond in a structured format with clear reasoning about your decisions.`,
+
+      editor: `You are the Editor Agent specialized in making direct code changes and file modifications.
+Your role is to:
+- Implement specific code changes and edits
+- Create, modify, and delete files as needed
+- Write clean, functional code that meets requirements
+- Focus on practical implementation rather than planning
+- Make precise, targeted changes with clear explanations
+
+Provide specific, actionable code changes and file modifications.`,
+
+      architect: `You are the Architect Agent specialized in system design and structural decisions.
+Your role is to:
+- Analyze code architecture and patterns
+- Recommend structural improvements
+- Design scalable solutions
+- Identify technical debt and refactoring opportunities
+- Provide high-level design guidance
+
+Focus on architectural decisions and structural improvements.`,
+
+      advisor: `You are the Advisor Agent specialized in providing recommendations and best practices.
+Your role is to:
+- Offer expert advice on development decisions
+- Suggest best practices and patterns
+- Provide learning resources and explanations
+- Help with technology choices and approaches
+- Guide users toward optimal solutions
+
+Provide clear, actionable advice with explanations and best practices.`,
+
+      shepherd: `You are the Shepherd Agent responsible for guiding processes and ensuring completion.
+Your role is to:
+- Monitor task progress and quality
+- Ensure all requirements are met
+- Guide users through complex workflows
+- Validate implementations and suggest improvements
+- Keep projects on track and organized
+
+Focus on process guidance, quality assurance, and task completion.`
+    };
+
+    return prompts[agentType] || 'You are an AI assistant helping with development tasks.';
+  };
+
+  // Helper function to build conversation for OpenAI
+  const buildAgentConversation = (agentType: string, userMessage: string, fileContents: Record<string, string>, conversationHistory: any[]): any[] => {
+    const messages = [];
+
+    // System prompt
+    messages.push({
+      role: 'system',
+      content: getAgentSystemPrompt(agentType)
+    });
+
+    // Add conversation history (limit to last 10 messages to avoid token limits)
+    const recentHistory = conversationHistory.slice(-10);
+    messages.push(...recentHistory.map(msg => ({
+      role: msg.role,
+      content: msg.content
+    })));
+
+    // Current context and file contents
+    const fileContext = Object.keys(fileContents).length > 0 
+      ? `\n\nCurrent files:\n${Object.entries(fileContents)
+          .map(([filename, content]) => `**${filename}:**\n\`\`\`\n${content}\n\`\`\``)
+          .join('\n\n')}`
+      : '';
+
+    // User message with context
+    messages.push({
+      role: 'user',
+      content: `${userMessage}${fileContext}`
+    });
+
+    return messages;
+  };
+
+  // Helper function to parse agent response into structured format
+  const parseAgentResponse = (responseContent: string, agentType: string): any => {
+    // Basic response structure
+    const response: any = {
+      content: responseContent,
+      actions: [] as any[],
+      shouldDelegate: undefined as any,
+      completed: true
+    };
+
+    // Check for delegation keywords
+    const delegationKeywords = ['delegate', 'hand off', 'refer to', 'should handle'];
+    const agentTypes = ['manager', 'editor', 'architect', 'advisor', 'shepherd'];
+    
+    const lowerContent = responseContent.toLowerCase();
+    
+    if (delegationKeywords.some(keyword => lowerContent.includes(keyword))) {
+      for (const targetAgent of agentTypes) {
+        if (targetAgent !== agentType && lowerContent.includes(targetAgent)) {
+          response.shouldDelegate = {
+            to: targetAgent,
+            reason: `Delegation suggested by ${agentType} agent`,
+            context: 'Task requires specialized expertise'
+          };
+          response.completed = false;
+          break;
+        }
+      }
+    }
+
+    // Parse actions from response (basic pattern matching)
+    if (agentType === 'editor') {
+      // Look for file editing patterns
+      const fileEditPattern = /(?:edit|modify|update|change)\s+([^\s]+\.(?:html|css|js|json))/gi;
+      let match;
+      while ((match = fileEditPattern.exec(responseContent)) !== null) {
+        response.actions.push({
+          type: 'file_edit',
+          target: match[1],
+          content: 'See response for details',
+          reason: 'File modification requested'
+        });
+      }
+    }
+
+    return response;
+  };
+
+  // Agent endpoints
+  app.post('/api/agents/manager', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = agentRequestSchema.parse(req.body);
+      
+      // Check workspace access
+      const isMember = await storage.isWorkspaceMember(validatedData.workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to workspace" });
+      }
+
+      // Check app access
+      const app = await storage.getApp(validatedData.appId);
+      if (!app || app.workspaceId !== validatedData.workspaceId) {
+        return res.status(404).json({ error: "App not found" });
+      }
+
+      // Build conversation for OpenAI
+      const messages = buildAgentConversation('manager', validatedData.userMessage, validatedData.fileContents, validatedData.conversationHistory);
+
+      // Get OpenAI response
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4',
+        messages: messages,
+        max_tokens: 800,
+        temperature: 0.7,
+      });
+
+      const responseContent = completion.choices[0]?.message?.content || "I couldn't generate a response. Please try again.";
+      const agentResponse = parseAgentResponse(responseContent, 'manager');
+
+      res.json(agentResponse);
+
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          error: "Validation failed",
+          details: error.errors
+        });
+      }
+      console.error("Error in manager agent:", error);
+      res.status(500).json({ error: "Failed to process manager agent request" });
+    }
+  });
+
+  app.post('/api/agents/editor', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = agentRequestSchema.parse(req.body);
+      
+      // Check workspace access
+      const isMember = await storage.isWorkspaceMember(validatedData.workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to workspace" });
+      }
+
+      // Check app access
+      const app = await storage.getApp(validatedData.appId);
+      if (!app || app.workspaceId !== validatedData.workspaceId) {
+        return res.status(404).json({ error: "App not found" });
+      }
+
+      // Build conversation for OpenAI
+      const messages = buildAgentConversation('editor', validatedData.userMessage, validatedData.fileContents, validatedData.conversationHistory);
+
+      // Get OpenAI response
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4',
+        messages: messages,
+        max_tokens: 1000,
+        temperature: 0.5,
+      });
+
+      const responseContent = completion.choices[0]?.message?.content || "I couldn't generate a response. Please try again.";
+      const agentResponse = parseAgentResponse(responseContent, 'editor');
+
+      res.json(agentResponse);
+
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          error: "Validation failed",
+          details: error.errors
+        });
+      }
+      console.error("Error in editor agent:", error);
+      res.status(500).json({ error: "Failed to process editor agent request" });
+    }
+  });
+
+  app.post('/api/agents/architect', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = agentRequestSchema.parse(req.body);
+      
+      // Check workspace access
+      const isMember = await storage.isWorkspaceMember(validatedData.workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to workspace" });
+      }
+
+      // Check app access
+      const app = await storage.getApp(validatedData.appId);
+      if (!app || app.workspaceId !== validatedData.workspaceId) {
+        return res.status(404).json({ error: "App not found" });
+      }
+
+      // Build conversation for OpenAI
+      const messages = buildAgentConversation('architect', validatedData.userMessage, validatedData.fileContents, validatedData.conversationHistory);
+
+      // Get OpenAI response
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4',
+        messages: messages,
+        max_tokens: 1000,
+        temperature: 0.6,
+      });
+
+      const responseContent = completion.choices[0]?.message?.content || "I couldn't generate a response. Please try again.";
+      const agentResponse = parseAgentResponse(responseContent, 'architect');
+
+      res.json(agentResponse);
+
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          error: "Validation failed",
+          details: error.errors
+        });
+      }
+      console.error("Error in architect agent:", error);
+      res.status(500).json({ error: "Failed to process architect agent request" });
+    }
+  });
+
+  app.post('/api/agents/advisor', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = agentRequestSchema.parse(req.body);
+      
+      // Check workspace access
+      const isMember = await storage.isWorkspaceMember(validatedData.workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to workspace" });
+      }
+
+      // Check app access
+      const app = await storage.getApp(validatedData.appId);
+      if (!app || app.workspaceId !== validatedData.workspaceId) {
+        return res.status(404).json({ error: "App not found" });
+      }
+
+      // Build conversation for OpenAI
+      const messages = buildAgentConversation('advisor', validatedData.userMessage, validatedData.fileContents, validatedData.conversationHistory);
+
+      // Get OpenAI response
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4',
+        messages: messages,
+        max_tokens: 1000,
+        temperature: 0.8,
+      });
+
+      const responseContent = completion.choices[0]?.message?.content || "I couldn't generate a response. Please try again.";
+      const agentResponse = parseAgentResponse(responseContent, 'advisor');
+
+      res.json(agentResponse);
+
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          error: "Validation failed",
+          details: error.errors
+        });
+      }
+      console.error("Error in advisor agent:", error);
+      res.status(500).json({ error: "Failed to process advisor agent request" });
+    }
+  });
+
+  app.post('/api/agents/shepherd', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = agentRequestSchema.parse(req.body);
+      
+      // Check workspace access
+      const isMember = await storage.isWorkspaceMember(validatedData.workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to workspace" });
+      }
+
+      // Check app access
+      const app = await storage.getApp(validatedData.appId);
+      if (!app || app.workspaceId !== validatedData.workspaceId) {
+        return res.status(404).json({ error: "App not found" });
+      }
+
+      // Build conversation for OpenAI
+      const messages = buildAgentConversation('shepherd', validatedData.userMessage, validatedData.fileContents, validatedData.conversationHistory);
+
+      // Get OpenAI response
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4',
+        messages: messages,
+        max_tokens: 1000,
+        temperature: 0.7,
+      });
+
+      const responseContent = completion.choices[0]?.message?.content || "I couldn't generate a response. Please try again.";
+      const agentResponse = parseAgentResponse(responseContent, 'shepherd');
+
+      res.json(agentResponse);
+
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          error: "Validation failed",
+          details: error.errors
+        });
+      }
+      console.error("Error in shepherd agent:", error);
+      res.status(500).json({ error: "Failed to process shepherd agent request" });
     }
   });
 
