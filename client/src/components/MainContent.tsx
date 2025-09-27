@@ -79,7 +79,7 @@ export default function MainContent({ searchResults, isSearching = false }: Main
       <div className="max-w-4xl mx-auto px-6 py-16 md:py-24">
         {/* Workspace Dropdown */}
         <div className="flex justify-center mb-8">
-          <WorkspaceDropdown onCreateTeam={() => console.log('Create Team clicked')} />
+          <WorkspaceDropdown onCreateTeam={() => {}} />
         </div>
 
         {/* Greeting and Project Creation */}
@@ -88,7 +88,7 @@ export default function MainContent({ searchResults, isSearching = false }: Main
             {`Hi ${user?.firstName ?? 'there'}, what do you want to make?`}
           </h1>
           
-          <ProjectCreationForm onProjectCreated={() => console.log('Project created')} />
+          <ProjectCreationForm onProjectCreated={() => {}} />
         </div>
         
         {/* Recent Projects */}

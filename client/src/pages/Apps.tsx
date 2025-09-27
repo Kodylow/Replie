@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLocation } from 'wouter'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { Search, Plus, MoreHorizontal, ExternalLink, Settings, Trash2, Download, Filter } from 'lucide-react'
+import { Search, Plus, MoreHorizontal, ExternalLink, Settings, Trash2, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'

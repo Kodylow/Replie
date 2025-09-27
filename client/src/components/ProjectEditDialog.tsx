@@ -99,7 +99,6 @@ export default function ProjectEditDialog({
     }
   }
 
-  const selectedCategory = categories.find(c => c.id === form.watch('category'))
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -120,7 +120,6 @@ export default function Account() {
   };
   
   const handleRemovePhoto = () => {
-    // TODO: Implement photo removal
     toast({
       title: "Photo removed",
       description: "Your profile photo has been removed.",
@@ -128,7 +127,6 @@ export default function Account() {
   };
   
   const handleStartExport = () => {
-    // TODO: Implement app export functionality
     toast({
       title: "Export started",
       description: "Your app export has been initiated. You'll receive an email when it's ready.",
@@ -136,7 +134,6 @@ export default function Account() {
   };
   
   const handleViewPublicProfile = () => {
-    // TODO: Open public profile in new tab
     window.open(`/@${user?.email?.split('@')[0] || 'user'}`, '_blank');
   };
 

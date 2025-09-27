@@ -9,7 +9,7 @@ export default function Header() {
           size="sm"
           className="text-sm"
           data-testid="button-profile"
-          onClick={() => console.log('Profile clicked')}
+          onClick={() => {}}
         >
           Profile
         </Button>

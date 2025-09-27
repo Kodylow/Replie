@@ -153,13 +153,6 @@ export class MemStorage implements IStorage {
       },
       {
         workspaceId: personalWorkspace.id,
-        title: "EventHarvest",
-        creator: "NickCo2", 
-        isPublished: "false",
-        backgroundColor: "bg-gradient-to-br from-gray-700 to-gray-900"
-      },
-      {
-        workspaceId: personalWorkspace.id,
         title: "VetConnect",
         creator: "NickCo2",
         isPublished: "false",
@@ -207,20 +200,6 @@ export class MemStorage implements IStorage {
         firstName: "Charlie",
         lastName: "Brown", 
         profileImageUrl: null
-      },
-      {
-        id: "user-4",
-        email: "diana@acme.com",
-        firstName: "Diana",
-        lastName: "Wilson",
-        profileImageUrl: null
-      },
-      {
-        id: "user-5",
-        email: "eve@acme.com",
-        firstName: "Eve",
-        lastName: "Davis",
-        profileImageUrl: null
       }
     ];
 
@@ -245,16 +224,6 @@ export class MemStorage implements IStorage {
         workspaceId: teamWorkspace.id,
         userId: "user-3",
         role: "member"
-      },
-      {
-        workspaceId: teamWorkspace.id,
-        userId: "user-4",
-        role: "member"
-      },
-      {
-        workspaceId: teamWorkspace.id,
-        userId: "user-5",
-        role: "member"
       }
     ];
 
@@ -277,9 +246,9 @@ export class MemStorage implements IStorage {
   }
 
   private async initializeTemplates() {
-    // Sample template data covering different categories and use cases
+    // Essential template data covering different categories
     const sampleTemplates = [
-      // Web Development Templates
+      // Essential templates covering different categories
       {
         title: "React TypeScript Starter",
         description: "A modern React application with TypeScript, Tailwind CSS, and Vite for fast development",
@@ -291,66 +260,11 @@ export class MemStorage implements IStorage {
         difficulty: "beginner",
         estimatedTime: "15 minutes",
         fileStructure: {
-          "src/": {
-            "App.tsx": "React app component",
-            "main.tsx": "App entry point",
-            "index.css": "Global styles"
-          },
-          "public/": {
-            "index.html": "HTML template"
-          },
-          "package.json": "Dependencies and scripts",
-          "tsconfig.json": "TypeScript configuration",
-          "tailwind.config.js": "Tailwind configuration"
+          "src/": "React components and application code",
+          "public/": "Static assets and HTML template"
         },
         isOfficial: "true"
       },
-      {
-        title: "Next.js Full Stack App",
-        description: "Complete Next.js application with API routes, database integration, and authentication",
-        category: "web",
-        tags: ["Next.js", "React", "TypeScript", "Prisma", "NextAuth"],
-        backgroundColor: "bg-gradient-to-br from-gray-900 to-gray-700",
-        iconName: "Zap",
-        usageCount: "1923",
-        difficulty: "intermediate",
-        estimatedTime: "45 minutes",
-        fileStructure: {
-          "pages/": {
-            "api/": {"auth/": {}, "users/": {}},
-            "index.tsx": "Home page",
-            "_app.tsx": "App wrapper"
-          },
-          "components/": {"ui/": {}},
-          "lib/": {"prisma.ts": "Database client"},
-          "prisma/": {"schema.prisma": "Database schema"}
-        },
-        isOfficial: "true"
-      },
-      {
-        title: "Express API Server",
-        description: "RESTful API server with Express, TypeScript, and database integration",
-        category: "web",
-        tags: ["Node.js", "Express", "TypeScript", "PostgreSQL"],
-        backgroundColor: "bg-gradient-to-br from-green-600 to-emerald-700",
-        iconName: "Server",
-        usageCount: "3156",
-        difficulty: "intermediate",
-        estimatedTime: "30 minutes",
-        fileStructure: {
-          "src/": {
-            "routes/": {"auth.ts": "", "users.ts": ""},
-            "middleware/": {"auth.ts": ""},
-            "models/": {"User.ts": ""},
-            "app.ts": "Express app setup",
-            "server.ts": "Server entry point"
-          },
-          "package.json": "Dependencies",
-          "tsconfig.json": "TypeScript config"
-        },
-        isOfficial: "true"
-      },
-      // Data Science Templates
       {
         title: "Python Data Analysis",
         description: "Jupyter notebook environment for data analysis with pandas, numpy, and matplotlib",
@@ -362,44 +276,11 @@ export class MemStorage implements IStorage {
         difficulty: "beginner",
         estimatedTime: "20 minutes",
         fileStructure: {
-          "notebooks/": {
-            "analysis.ipynb": "Main analysis notebook",
-            "visualization.ipynb": "Data visualization examples"
-          },
-          "data/": {
-            "sample.csv": "Sample dataset"
-          },
-          "src/": {
-            "utils.py": "Helper functions"
-          },
-          "requirements.txt": "Python dependencies"
+          "notebooks/": "Jupyter notebooks for analysis",
+          "data/": "Sample datasets"
         },
         isOfficial: "true"
       },
-      {
-        title: "Machine Learning Pipeline",
-        description: "Complete ML workflow with scikit-learn, feature engineering, and model evaluation",
-        category: "data",
-        tags: ["Python", "Scikit-learn", "TensorFlow", "Jupyter"],
-        backgroundColor: "bg-gradient-to-br from-purple-600 to-pink-600",
-        iconName: "Brain",
-        usageCount: "892",
-        difficulty: "advanced",
-        estimatedTime: "1.5 hours",
-        fileStructure: {
-          "src/": {
-            "models/": {"classifier.py": "", "regressor.py": ""},
-            "features/": {"engineering.py": ""},
-            "evaluation/": {"metrics.py": ""},
-            "train.py": "Training script"
-          },
-          "notebooks/": {"exploration.ipynb": ""},
-          "data/": {"train.csv": "", "test.csv": ""},
-          "requirements.txt": "ML dependencies"
-        },
-        isOfficial: "true"
-      },
-      // Game Development Templates
       {
         title: "JavaScript Game Engine",
         description: "2D game framework with HTML5 Canvas, sprite animation, and collision detection",
@@ -411,110 +292,27 @@ export class MemStorage implements IStorage {
         difficulty: "intermediate",
         estimatedTime: "1 hour",
         fileStructure: {
-          "src/": {
-            "engine/": {
-              "Game.js": "Main game class",
-              "Scene.js": "Scene management",
-              "Entity.js": "Game entities",
-              "Physics.js": "Physics engine"
-            },
-            "scenes/": {"MenuScene.js": "", "GameScene.js": ""},
-            "entities/": {"Player.js": "", "Enemy.js": ""},
-            "main.js": "Game initialization"
-          },
-          "assets/": {
-            "sprites/": {},
-            "sounds/": {}
-          },
-          "index.html": "Game HTML"
+          "src/": "Game engine and entity classes",
+          "assets/": "Sprites and sound effects"
         },
         isOfficial: "true"
       },
       {
-        title: "Python Pygame Starter",
-        description: "2D game development with Pygame library, sprites, and sound effects",
-        category: "game",
-        tags: ["Python", "Pygame", "2D Graphics"],
-        backgroundColor: "bg-gradient-to-br from-red-500 to-pink-600",
-        iconName: "Joystick",
-        usageCount: "756",
-        difficulty: "beginner",
-        estimatedTime: "45 minutes",
-        fileStructure: {
-          "src/": {
-            "game.py": "Main game loop",
-            "player.py": "Player class",
-            "enemy.py": "Enemy class",
-            "utils.py": "Game utilities"
-          },
-          "assets/": {
-            "images/": {"player.png": "", "enemy.png": ""},
-            "sounds/": {"jump.wav": "", "collect.wav": ""}
-          },
-          "main.py": "Game entry point",
-          "requirements.txt": "Pygame dependency"
-        },
-        isOfficial: "true"
-      },
-      // AI/Bot Templates
-      {
-        title: "Discord Bot Template",
-        description: "Feature-rich Discord bot with slash commands, moderation tools, and database integration",
-        category: "agents",
-        tags: ["Python", "Discord.py", "Bot", "API"],
-        backgroundColor: "bg-gradient-to-br from-violet-600 to-indigo-700",
-        iconName: "Bot",
-        usageCount: "2341",
-        difficulty: "intermediate",
-        estimatedTime: "40 minutes",
-        fileStructure: {
-          "src/": {
-            "cogs/": {
-              "moderation.py": "Moderation commands",
-              "utility.py": "Utility commands",
-              "music.py": "Music bot features"
-            },
-            "utils/": {
-              "database.py": "Database helpers",
-              "permissions.py": "Permission system"
-            },
-            "bot.py": "Main bot class"
-          },
-          "config/": {"config.json": "Bot configuration"},
-          "requirements.txt": "Bot dependencies",
-          "main.py": "Bot startup"
-        },
-        isOfficial: "true"
-      },
-      {
-        title: "OpenAI ChatBot",
+        title: "AI ChatBot Template",
         description: "Intelligent chatbot powered by OpenAI GPT with conversation memory and custom prompts",
         category: "agents",
         tags: ["Python", "OpenAI", "FastAPI", "AI"],
         backgroundColor: "bg-gradient-to-br from-emerald-500 to-teal-600",
-        iconName: "MessageSquare",
+        iconName: "Bot",
         usageCount: "1876",
         difficulty: "intermediate",
         estimatedTime: "35 minutes",
         fileStructure: {
-          "src/": {
-            "chatbot/": {
-              "gpt_client.py": "OpenAI integration",
-              "conversation.py": "Conversation management",
-              "prompts.py": "Custom prompts"
-            },
-            "api/": {
-              "routes.py": "FastAPI routes",
-              "models.py": "Pydantic models"
-            },
-            "main.py": "FastAPI app"
-          },
-          "templates/": {"chat.html": "Chat interface"},
-          "requirements.txt": "AI dependencies"
+          "src/": "ChatBot implementation and API routes",
+          "templates/": "Chat interface HTML"
         },
         isOfficial: "true"
       },
-      // General Programming Templates
       {
         title: "CLI Tool Template",
         description: "Command-line application with argument parsing, configuration, and testing framework",
@@ -526,19 +324,8 @@ export class MemStorage implements IStorage {
         difficulty: "beginner",
         estimatedTime: "25 minutes",
         fileStructure: {
-          "src/": {
-            "cli/": {
-              "main.py": "Main CLI interface",
-              "commands/": {"init.py": "", "build.py": ""},
-              "utils.py": "CLI utilities"
-            }
-          },
-          "tests/": {
-            "test_cli.py": "CLI tests",
-            "test_utils.py": "Utility tests"
-          },
-          "setup.py": "Package setup",
-          "requirements.txt": "Dependencies"
+          "src/": "CLI commands and utilities",
+          "tests/": "Unit tests and test utilities"
         },
         isOfficial: "true"
       }
@@ -610,7 +397,7 @@ export class MemStorage implements IStorage {
           });
         } catch (error) {
           // Ignore errors if membership already exists
-          console.log(`Note: User ${newUser.id} already member of workspace ${workspace.id}`);
+          // Note: User already member of workspace
         }
       }
       

@@ -20,11 +20,11 @@ export default function MobileAccountTab() {
     : 'U'
 
   const menuItems = [
-    { icon: User, label: 'Profile', description: 'Manage your profile info', action: () => console.log('Profile') },
-    { icon: Settings, label: 'Account Settings', description: 'Privacy and account preferences', action: () => console.log('Settings') },
-    { icon: Bell, label: 'Notifications', description: 'Manage your notification preferences', action: () => console.log('Notifications') },
-    { icon: CreditCard, label: 'Billing', description: 'View usage and billing info', action: () => console.log('Billing') },
-    { icon: Shield, label: 'Privacy & Security', description: 'Manage your privacy settings', action: () => console.log('Privacy') },
+    { icon: User, label: 'Profile', description: 'Manage your profile info', action: () => {} },
+    { icon: Settings, label: 'Account Settings', description: 'Privacy and account preferences', action: () => {} },
+    { icon: Bell, label: 'Notifications', description: 'Manage your notification preferences', action: () => {} },
+    { icon: CreditCard, label: 'Billing', description: 'View usage and billing info', action: () => {} },
+    { icon: Shield, label: 'Privacy & Security', description: 'Manage your privacy settings', action: () => {} },
   ]
 
   return (

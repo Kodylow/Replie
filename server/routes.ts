@@ -279,13 +279,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .map(email => email.trim())
           .filter(email => email.length > 0);
         
-        // For now, just log the invited emails
-        // TODO: In future implementation, send actual email invitations
-        console.log(`Team ${workspace.name} created with invited emails:`, emails);
+        // Note: Email invitations will be implemented in future iterations
+        // For now, emails are processed but not sent
       }
       
-      // Log billing information for future Stripe integration
-      console.log(`Team ${workspace.name} created with plan: ${validatedData.plan}, billing email: ${validatedData.billingEmail}`);
+      // Note: Billing integration will be implemented in future iterations
       
       res.status(201).json({
         workspace,
@@ -675,7 +673,6 @@ document.addEventListener('DOMContentLoaded', function() {
         alert('Hello from your app!');
     });
     
-    console.log('App initialized successfully!');
 });`,
       'db.json': `{
   "users": [],

@@ -277,7 +277,7 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
               active={location === '/members'}
               onClick={() => setLocation('/members')} 
             />
-            <NavItem icon={UserCheck} label="Groups" onClick={() => console.log('Groups clicked')} />
+            <NavItem icon={UserCheck} label="Groups" onClick={() => {}} />
             <NavItem 
               icon={Settings} 
               label="Usage" 
@@ -290,16 +290,16 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
               active={location === '/analytics'}
               onClick={() => setLocation('/analytics')} 
             />
-            <NavItem icon={Settings} label="Profile" onClick={() => console.log('Profile clicked')} />
-            <NavItem icon={Settings} label="Settings" onClick={() => console.log('Settings clicked')} />
+            <NavItem icon={Settings} label="Profile" onClick={() => setLocation('/account')} />
+            <NavItem icon={Settings} label="Settings" onClick={() => {}} />
           </div>
         )}
         
         <div className="py-2">
           <p className="text-xs font-medium text-muted-foreground px-3 pb-2">Explore Replit</p>
-          <NavItem icon={BookOpen} label="Developer Frameworks" onClick={() => console.log('Frameworks clicked')} />
-          <NavItem icon={ExternalLink} label="Learn" onClick={() => console.log('Learn clicked')} />
-          <NavItem icon={BookOpen} label="Documentation" onClick={() => console.log('Documentation clicked')} />
+          <NavItem icon={BookOpen} label="Developer Frameworks" onClick={() => {}} />
+          <NavItem icon={ExternalLink} label="Learn" onClick={() => {}} />
+          <NavItem icon={BookOpen} label="Documentation" onClick={() => {}} />
         </div>
       </div>
 
