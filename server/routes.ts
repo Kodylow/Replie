@@ -15,9 +15,11 @@ import fs from 'fs/promises';
 import os from 'os';
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Initialize OpenAI client
+  // Initialize OpenAI client using Replit's AI Gateway
+  // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
   const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+    baseURL: process.env.AI_GATEWAY_OPENAI_BASE_URL,
+    apiKey: process.env.AI_GATEWAY_OPENAI_API_KEY
   });
 
   // Initialize Object Storage Service
@@ -1582,13 +1584,21 @@ document.addEventListener('DOMContentLoaded', function() {
   app.post('/api/chat/planning', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      console.log('🎯 Planning API: Starting planning request for user:', userId);
       const validatedData = planningChatSchema.parse(req.body);
+      console.log('📝 Planning API: Request data:', { 
+        message: validatedData.message, 
+        workspaceId: validatedData.workspaceId,
+        conversationId: validatedData.conversationId 
+      });
       
       // Check if user is a member of the workspace
       const isMember = await storage.isWorkspaceMember(validatedData.workspaceId, userId);
       if (!isMember) {
+        console.log('❌ Planning API: Access denied - user not member of workspace');
         return res.status(403).json({ error: "Access denied to workspace" });
       }
+      console.log('✅ Planning API: Workspace access verified');
 
       let conversation;
       let messages: any[] = [];
@@ -1643,15 +1653,20 @@ Keep responses conversational, friendly, and focused on planning. Ask 2-3 clarif
         }
       ];
 
-      // Get OpenAI response
+      // Get OpenAI response using latest model
+      console.log('🤖 Planning API: Sending request to OpenAI with', conversationHistory.length, 'messages');
+      // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
       const completion = await openai.chat.completions.create({
-        model: 'gpt-4',
+        model: 'gpt-5',
         messages: conversationHistory as any,
-        max_tokens: 500,
+        max_completion_tokens: 500,
         temperature: 0.7,
       });
+      console.log('✅ Planning API: Received OpenAI response');
 
       const assistantResponse = completion.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response. Please try again.";
+      console.log('📝 Planning API: Assistant response length:', assistantResponse.length);
+      console.log('📝 Planning API: Assistant response preview:', assistantResponse.substring(0, 200) + '...');
 
       // Save assistant response
       const assistantMessage = await storage.createChatMessage({
@@ -1660,18 +1675,22 @@ Keep responses conversational, friendly, and focused on planning. Ask 2-3 clarif
         content: assistantResponse,
         messageIndex: (messages.length + 1).toString(),
       });
+      console.log('💾 Planning API: Assistant message saved with ID:', assistantMessage.id);
 
       // Check if we should transition to mode selection phase
       const shouldShowModeSelection = assistantResponse.toLowerCase().includes('design mode') && 
                                     assistantResponse.toLowerCase().includes('build mode');
+      console.log('🎯 Planning API: Should show mode selection:', shouldShowModeSelection);
 
       if (shouldShowModeSelection) {
         await storage.updateChatConversation(conversation.id, {
           phase: 'mode_selection',
           finalPlan: assistantResponse,
         });
+        console.log('🔄 Planning API: Conversation updated to mode_selection phase');
       }
 
+      console.log('✅ Planning API: Sending response to client');
       res.json({
         conversation,
         userMessage,

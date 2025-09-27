@@ -33,44 +33,79 @@ export default function Planning() {
   const [isTyping, setIsTyping] = useState(false);
   const [hasStartedChat, setHasStartedChat] = useState(false);
 
-  // Extract project idea from URL parameters
+  // Extract project idea from URL parameters and start real AI planning
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const ideaParam = urlParams.get('idea');
     if (ideaParam) {
       const decodedIdea = decodeURIComponent(ideaParam);
+      console.log('🚀 Planning: Starting AI planning for:', decodedIdea);
       setUserMessage(decodedIdea);
       setHasStartedChat(true);
-      // Show planning response and cards immediately
-      setReplieResponse(generatePlanningResponse());
-      setShowModeSelection(true);
+      setIsTyping(true);
+      
+      // Start real AI planning
+      if (currentWorkspace?.id) {
+        console.log('✅ Planning: Workspace available, starting AI chat mutation');
+        chatMutation.mutate(decodedIdea);
+      } else {
+        console.log('⚠️ Planning: No workspace available, waiting...');
+        // Wait for workspace to be available
+        const checkWorkspace = setInterval(() => {
+          if (currentWorkspace?.id) {
+            console.log('✅ Planning: Workspace now available, starting AI chat mutation');
+            clearInterval(checkWorkspace);
+            chatMutation.mutate(decodedIdea);
+          }
+        }, 100);
+        
+        // Cleanup interval after 5 seconds
+        setTimeout(() => {
+          clearInterval(checkWorkspace);
+          if (!replieResponse) {
+            console.log('❌ Planning: Timeout waiting for workspace');
+            setIsTyping(false);
+          }
+        }, 5000);
+      }
     }
-  }, [location]);
+  }, [location, currentWorkspace?.id]);
 
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
+      console.log('🤖 Planning: Sending AI request for message:', message);
+      console.log('📝 Planning: Workspace ID:', currentWorkspace?.id);
+      console.log('💬 Planning: Conversation ID:', conversationId);
+      
       const response = await apiRequest('POST', '/api/chat/planning', {
         message,
         conversationId,
         workspaceId: currentWorkspace?.id,
       });
-      return await response.json() as ChatResponse;
+      
+      console.log('📨 Planning: API response status:', response.status);
+      const data = await response.json() as ChatResponse;
+      console.log('✨ Planning: AI response received:', data.assistantMessage?.content?.substring(0, 100) + '...');
+      console.log('🎯 Planning: Show mode selection:', data.showModeSelection);
+      
+      return data;
     },
     onMutate: () => {
+      console.log('⏳ Planning: Starting AI mutation, setting typing state');
       setIsTyping(true);
     },
     onSuccess: (data) => {
+      console.log('✅ Planning: AI response success');
       setConversationId(data.conversation.id);
       setReplieResponse(data.assistantMessage.content);
       setShowModeSelection(data.showModeSelection);
       setIsTyping(false);
+      console.log('🎉 Planning: UI state updated with AI response');
     },
     onError: (error) => {
-      console.error('Chat error:', error);
-      // Fallback to generated planning response when API fails
-      setReplieResponse(generatePlanningResponse());
-      setShowModeSelection(true);
+      console.error('❌ Planning: AI request failed:', error);
       setIsTyping(false);
+      // Don't show fallback content - let the user see the error
     },
   });
 
@@ -106,20 +141,6 @@ export default function Planning() {
     }
   };
 
-  // Generate mock planning response for demo purposes
-  const generatePlanningResponse = () => {
-    return `I'll help you create a simple "Hello World" application. Let me propose a plan for a basic web application.
-
-**App type:** Modern web app
-
-A simple "Hello World" web application with basic HTML and Express server
-
-I'll include the following features:
-• Display "Hello World" message on a web page
-• Clean, simple HTML structure with basic styling  
-• Responsive design that works on different screen sizes
-• Basic Express server to serve the application`;
-  };
 
   return (
     <div className="h-screen bg-white flex flex-col">
@@ -165,7 +186,7 @@ I'll include the following features:
                   ) : (
                     <div className="space-y-4">
                       <div className="prose prose-sm max-w-none">
-                        {replieResponse || generatePlanningResponse()}
+                        {replieResponse}
                       </div>
                       <Button 
                         variant="outline" 
