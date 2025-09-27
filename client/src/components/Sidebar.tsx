@@ -75,7 +75,7 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [isCommandOpen, setIsCommandOpen] = useState(false)
-  const { workspaces } = useWorkspace()
+  const { workspaces, currentWorkspace } = useWorkspace()
 
   // Search apps across all workspaces
   const { data: searchResults, isLoading: searchLoading } = useQuery<AppWithWorkspace[]>({
@@ -268,30 +268,33 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
           onClick={() => setLocation('/published-apps')}
         />
         
-        <div className="py-2">
-          <p className="text-xs font-medium text-muted-foreground px-3 pb-2">Manage Organization</p>
-          <NavItem 
-            icon={Users} 
-            label="Members" 
-            active={location === '/members'}
-            onClick={() => setLocation('/members')} 
-          />
-          <NavItem icon={UserCheck} label="Groups" onClick={() => console.log('Groups clicked')} />
-          <NavItem 
-            icon={Settings} 
-            label="Usage" 
-            active={location === '/usage'}
-            onClick={() => setLocation('/usage')} 
-          />
-          <NavItem 
-            icon={BarChart3} 
-            label="Analytics" 
-            active={location === '/analytics'}
-            onClick={() => setLocation('/analytics')} 
-          />
-          <NavItem icon={Settings} label="Profile" onClick={() => console.log('Profile clicked')} />
-          <NavItem icon={Settings} label="Settings" onClick={() => console.log('Settings clicked')} />
-        </div>
+        {/* Only show Manage Organization for team workspaces */}
+        {currentWorkspace?.type === 'team' && (
+          <div className="py-2">
+            <p className="text-xs font-medium text-muted-foreground px-3 pb-2">Manage Organization</p>
+            <NavItem 
+              icon={Users} 
+              label="Members" 
+              active={location === '/members'}
+              onClick={() => setLocation('/members')} 
+            />
+            <NavItem icon={UserCheck} label="Groups" onClick={() => console.log('Groups clicked')} />
+            <NavItem 
+              icon={Settings} 
+              label="Usage" 
+              active={location === '/usage'}
+              onClick={() => setLocation('/usage')} 
+            />
+            <NavItem 
+              icon={BarChart3} 
+              label="Analytics" 
+              active={location === '/analytics'}
+              onClick={() => setLocation('/analytics')} 
+            />
+            <NavItem icon={Settings} label="Profile" onClick={() => console.log('Profile clicked')} />
+            <NavItem icon={Settings} label="Settings" onClick={() => console.log('Settings clicked')} />
+          </div>
+        )}
         
         <div className="py-2">
           <p className="text-xs font-medium text-muted-foreground px-3 pb-2">Explore Replit</p>

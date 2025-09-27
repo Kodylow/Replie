@@ -7,145 +7,38 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { useQuery } from '@tanstack/react-query'
+import { useWorkspace } from '@/contexts/WorkspaceContext'
+import type { WorkspaceMemberWithUser } from '@shared/schema'
 
 interface Member {
   id: string
   name: string
   username: string
   email: string
-  role: 'Admin' | 'Member' | 'Guest'
+  role: string
   lastActive: string
   avatar?: string
 }
 
-const SAMPLE_MEMBERS: Member[] = [
-  {
-    id: '1',
-    name: 'Luis Héctor',
-    username: '@luisesth',
-    email: 'luis@repl.it',
-    role: 'Admin',
-    lastActive: '2 minutes ago',
-    avatar: '/api/placeholder/40/40'
-  },
-  {
-    id: '2',
-    name: 'Jeff @ Replit',
-    username: '@jeff',
-    email: 'jeff@replit.com',
-    role: 'Admin',
-    lastActive: '3 hours ago',
-    avatar: '/api/placeholder/40/40'
-  },
-  {
-    id: '3',
-    name: 'Horacio',
-    username: '@horaciohoracio',
-    email: 'horacio@repl.it',
-    role: 'Admin',
-    lastActive: '7 hours ago',
-    avatar: '/api/placeholder/40/40'
-  },
-  {
-    id: '4',
-    name: 'Landon',
-    username: '@landonrill',
-    email: 'landon.rill@repl.it',
-    role: 'Member',
-    lastActive: '2 hours ago',
-    avatar: '/api/placeholder/40/40'
-  },
-  {
-    id: '5',
-    name: 'Kody',
-    username: '@kody',
-    email: 'kodylow7@gmail.com',
-    role: 'Member',
-    lastActive: '2 days ago',
-    avatar: '/api/placeholder/40/40'
-  },
-  {
-    id: '6',
-    name: 'devin',
-    username: '@theforgosally',
-    email: 'devin@replit.com',
-    role: 'Member',
-    lastActive: '6 days ago',
-    avatar: '/api/placeholder/40/40'
-  },
-  {
-    id: '7',
-    name: 'Breno',
-    username: '@breno-sth',
-    email: 'breno@repl.it',
-    role: 'Member',
-    lastActive: '6 hours ago',
-    avatar: '/api/placeholder/40/40'
-  },
-  {
-    id: '8',
-    name: 'Jordan',
-    username: '@jordanwise',
-    email: 'jordanwise@repl.it',
-    role: 'Admin',
-    lastActive: '24 minutes ago',
-    avatar: '/api/placeholder/40/40'
-  },
-  {
-    id: '9',
-    name: 'Aman',
-    username: '@aman003',
-    email: 'aman.mathur@repl.it',
-    role: 'Admin',
-    lastActive: '3 days ago',
-    avatar: '/api/placeholder/40/40'
-  },
-  {
-    id: '10',
-    name: 'pypur16',
-    username: '@pypuron',
-    email: 'pypur16@protonemail.com',
-    role: 'Guest',
-    lastActive: '',
-    avatar: '/api/placeholder/40/40'
-  },
-  {
-    id: '11',
-    name: 'Ertan',
-    username: '@ertan2',
-    email: 'ertan@repl.it',
-    role: 'Admin',
-    lastActive: '4 hours ago',
-    avatar: '/api/placeholder/40/40'
-  },
-  {
-    id: '12',
-    name: 'Ryan',
-    username: '@ryantm',
-    email: 'ryan@repl.it',
-    role: 'Admin',
-    lastActive: '4 hours ago',
-    avatar: '/api/placeholder/40/40'
-  },
-  {
-    id: '13',
-    name: 'Yamini',
-    username: '@yaminikukreja',
-    email: 'yamini.kukreja@repl.it',
-    role: 'Member',
-    lastActive: '2 days ago',
-    avatar: '/api/placeholder/40/40'
-  },
-  {
-    id: '14',
-    name: 'Adi',
-    username: '@adi',
-    email: 'adi.dahiya@repl.it',
-    role: 'Member',
-    lastActive: '2 hours ago',
-    avatar: '/api/placeholder/40/40'
+// Transform WorkspaceMemberWithUser to Member interface
+function transformMemberData(memberWithUser: WorkspaceMemberWithUser): Member {
+  const { user, role } = memberWithUser
+  const name = user.firstName && user.lastName 
+    ? `${user.firstName} ${user.lastName}`
+    : user.email || 'Unknown User'
+  
+  return {
+    id: memberWithUser.id,
+    name,
+    username: `@${user.email?.split('@')[0] || 'user'}`,
+    email: user.email || '',
+    role: role.charAt(0).toUpperCase() + role.slice(1), // Capitalize role
+    lastActive: '', // We don't have lastActive data from backend yet
+    avatar: user.profileImageUrl || undefined
   }
-]
+}
+
 
 interface MembersProps {
   searchResults: any[]
@@ -237,9 +130,27 @@ export default function Members({ searchResults = [], isSearching }: MembersProp
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [activeTab, setActiveTab] = useState('members')
+  const { currentWorkspace } = useWorkspace()
+
+  // Fetch workspace members
+  const { data: membersWithUsers = [], isLoading } = useQuery<WorkspaceMemberWithUser[]>({
+    queryKey: ['/api/workspaces', currentWorkspace?.id, 'members'],
+    queryFn: async () => {
+      if (!currentWorkspace?.id) return []
+      const response = await fetch(`/api/workspaces/${currentWorkspace.id}/members`, {
+        credentials: 'include'
+      })
+      if (!response.ok) throw new Error('Failed to fetch members')
+      return response.json()
+    },
+    enabled: !!currentWorkspace?.id && currentWorkspace.type === 'team'
+  })
+
+  // Transform backend data to Member interface
+  const members = membersWithUsers.map(transformMemberData)
 
   // Filter members based on search and role filter
-  const filteredMembers = SAMPLE_MEMBERS.filter(member => {
+  const filteredMembers = members.filter(member => {
     const matchesSearch = 
       member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       member.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -250,10 +161,38 @@ export default function Members({ searchResults = [], isSearching }: MembersProp
     return matchesSearch && matchesRole
   })
 
-  const memberCount = SAMPLE_MEMBERS.length
-  const adminCount = SAMPLE_MEMBERS.filter(m => m.role === 'Admin').length
-  const memberOnlyCount = SAMPLE_MEMBERS.filter(m => m.role === 'Member').length
-  const guestCount = SAMPLE_MEMBERS.filter(m => m.role === 'Guest').length
+  const memberCount = members.length
+  const adminCount = members.filter(m => m.role === 'Admin').length
+  const memberOnlyCount = members.filter(m => m.role === 'Member').length
+  const guestCount = members.filter(m => m.role === 'Guest').length
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex items-center justify-center flex-1">
+          <div className="text-center">
+            <Users className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
+            <p className="text-muted-foreground">Loading members...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show message for personal workspaces
+  if (currentWorkspace?.type === 'personal') {
+    return (
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex items-center justify-center flex-1">
+          <div className="text-center">
+            <Users className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
+            <p className="text-muted-foreground">Members are only available for team workspaces</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -267,7 +206,7 @@ export default function Members({ searchResults = [], isSearching }: MembersProp
             <h1 className="text-xl font-semibold" data-testid="text-page-title">
               Members
             </h1>
-            <p className="text-sm text-muted-foreground">Replit - Demo</p>
+            <p className="text-sm text-muted-foreground">{currentWorkspace?.name || 'Loading...'}</p>
           </div>
         </div>
         

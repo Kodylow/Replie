@@ -128,7 +128,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Access denied to workspace" });
       }
       
-      const members = await storage.getWorkspaceMembers(workspaceId);
+      const members = await storage.getWorkspaceMembersWithUsers(workspaceId);
       res.json(members);
     } catch (error) {
       console.error("Error fetching workspace members:", error);

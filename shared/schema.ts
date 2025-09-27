@@ -110,3 +110,18 @@ export type InsertWorkspace = z.infer<typeof insertWorkspaceSchema>;
 export type Workspace = typeof workspaces.$inferSelect;
 export type InsertWorkspaceMember = z.infer<typeof insertWorkspaceMemberSchema>;
 export type WorkspaceMember = typeof workspaceMembers.$inferSelect;
+
+// Enhanced workspace member with user details for display
+export interface WorkspaceMemberWithUser {
+  id: string;
+  workspaceId: string;
+  role: string;
+  createdAt: Date;
+  user: {
+    id: string;
+    email: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    profileImageUrl: string | null;
+  };
+}

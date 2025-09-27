@@ -1,4 +1,4 @@
-import { type User, type UpsertUser, type InsertUser, type Project, type InsertProject, type App, type InsertApp, type Workspace, type InsertWorkspace, type WorkspaceMember, type InsertWorkspaceMember } from "@shared/schema";
+import { type User, type UpsertUser, type InsertUser, type Project, type InsertProject, type App, type InsertApp, type Workspace, type InsertWorkspace, type WorkspaceMember, type InsertWorkspaceMember, type WorkspaceMemberWithUser } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 // modify the interface with any CRUD methods
@@ -21,6 +21,7 @@ export interface IStorage {
   addWorkspaceMember(member: InsertWorkspaceMember): Promise<WorkspaceMember>;
   removeWorkspaceMember(workspaceId: string, userId: string): Promise<boolean>;
   getWorkspaceMembers(workspaceId: string): Promise<WorkspaceMember[]>;
+  getWorkspaceMembersWithUsers(workspaceId: string): Promise<WorkspaceMemberWithUser[]>;
   isWorkspaceMember(workspaceId: string, userId: string): Promise<boolean>;
   
   // Project methods (workspace-scoped)
@@ -153,6 +154,84 @@ export class MemStorage implements IStorage {
       }
     ];
     
+    // Create sample users
+    const sampleUsers = [
+      {
+        id: "user-1",
+        email: "alice@acme.com",
+        firstName: "Alice",
+        lastName: "Johnson",
+        profileImageUrl: null
+      },
+      {
+        id: "user-2", 
+        email: "bob@acme.com",
+        firstName: "Bob",
+        lastName: "Smith",
+        profileImageUrl: null
+      },
+      {
+        id: "user-3",
+        email: "charlie@acme.com",
+        firstName: "Charlie",
+        lastName: "Brown", 
+        profileImageUrl: null
+      },
+      {
+        id: "user-4",
+        email: "diana@acme.com",
+        firstName: "Diana",
+        lastName: "Wilson",
+        profileImageUrl: null
+      },
+      {
+        id: "user-5",
+        email: "eve@acme.com",
+        firstName: "Eve",
+        lastName: "Davis",
+        profileImageUrl: null
+      }
+    ];
+
+    // Create users
+    for (const userData of sampleUsers) {
+      await this.upsertUser(userData);
+    }
+
+    // Create workspace members for team workspace
+    const teamMembers = [
+      {
+        workspaceId: teamWorkspace.id,
+        userId: "user-1",
+        role: "admin"
+      },
+      {
+        workspaceId: teamWorkspace.id,
+        userId: "user-2", 
+        role: "admin"
+      },
+      {
+        workspaceId: teamWorkspace.id,
+        userId: "user-3",
+        role: "member"
+      },
+      {
+        workspaceId: teamWorkspace.id,
+        userId: "user-4",
+        role: "member"
+      },
+      {
+        workspaceId: teamWorkspace.id,
+        userId: "user-5",
+        role: "member"
+      }
+    ];
+
+    // Add members to team workspace
+    for (const member of teamMembers) {
+      await this.addWorkspaceMember(member);
+    }
+    
     // Create all projects and apps
     for (const project of [...personalProjects, ...teamProjects]) {
       await this.createProject(project);
@@ -192,6 +271,22 @@ export class MemStorage implements IStorage {
         updatedAt: now,
       };
       this.users.set(newUser.id, newUser);
+      
+      // Automatically add new users to existing workspaces for demo purposes
+      const allWorkspaces = Array.from(this.workspaces.values());
+      for (const workspace of allWorkspaces) {
+        try {
+          await this.addWorkspaceMember({
+            workspaceId: workspace.id,
+            userId: newUser.id,
+            role: workspace.type === 'personal' ? 'admin' : 'member'
+          });
+        } catch (error) {
+          // Ignore errors if membership already exists
+          console.log(`Note: User ${newUser.id} already member of workspace ${workspace.id}`);
+        }
+      }
+      
       return newUser;
     }
   }
@@ -271,6 +366,7 @@ export class MemStorage implements IStorage {
     const workspaceMember: WorkspaceMember = {
       ...member,
       id,
+      role: member.role || 'member',
       createdAt: now,
     };
     this.workspaceMembers.set(id, workspaceMember);
@@ -291,7 +387,38 @@ export class MemStorage implements IStorage {
   async getWorkspaceMembers(workspaceId: string): Promise<WorkspaceMember[]> {
     return Array.from(this.workspaceMembers.values())
       .filter(member => member.workspaceId === workspaceId)
-      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      .sort((a, b) => {
+        const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return aTime - bTime;
+      });
+  }
+
+  async getWorkspaceMembersWithUsers(workspaceId: string): Promise<WorkspaceMemberWithUser[]> {
+    const members = await this.getWorkspaceMembers(workspaceId);
+    
+    const membersWithUsers: WorkspaceMemberWithUser[] = [];
+    
+    for (const member of members) {
+      const user = this.users.get(member.userId);
+      if (user) {
+        membersWithUsers.push({
+          id: member.id,
+          workspaceId: member.workspaceId,
+          role: member.role,
+          createdAt: member.createdAt || new Date(),
+          user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            profileImageUrl: user.profileImageUrl,
+          }
+        });
+      }
+    }
+    
+    return membersWithUsers;
   }
 
   async isWorkspaceMember(workspaceId: string, userId: string): Promise<boolean> {
@@ -374,6 +501,7 @@ export class MemStorage implements IStorage {
     const app: App = {
       ...insertApp,
       id,
+      isPrivate: insertApp.isPrivate ?? 'true',
       isPublished: insertApp.isPublished ?? 'false',
       backgroundColor: insertApp.backgroundColor ?? 'bg-gradient-to-br from-blue-500 to-purple-600',
       createdAt: now,
