@@ -8,6 +8,7 @@ export interface IStorage {
   // User methods (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  updateUser(id: string, updates: Partial<{ firstName: string; lastName: string; bio: string }>): Promise<User | undefined>;
   
   // Workspace methods
   getWorkspace(id: string): Promise<Workspace | undefined>;
@@ -266,6 +267,7 @@ export class MemStorage implements IStorage {
         email: userData.email || null,
         firstName: userData.firstName || null,
         lastName: userData.lastName || null,
+        bio: "",
         profileImageUrl: userData.profileImageUrl || null,
         createdAt: now,
         updatedAt: now,
@@ -289,6 +291,20 @@ export class MemStorage implements IStorage {
       
       return newUser;
     }
+  }
+
+  async updateUser(id: string, updates: Partial<{ firstName: string; lastName: string; bio: string }>): Promise<User | undefined> {
+    const existingUser = this.users.get(id);
+    if (!existingUser) return undefined;
+
+    const updatedUser: User = {
+      ...existingUser,
+      ...updates,
+      updatedAt: new Date(),
+    };
+    
+    this.users.set(id, updatedUser);
+    return updatedUser;
   }
 
   // Workspace methods

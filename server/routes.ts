@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertProjectSchema, insertAppSchema, insertWorkspaceSchema, insertWorkspaceMemberSchema, createTeamSchema } from "@shared/schema";
+import { insertProjectSchema, insertAppSchema, insertWorkspaceSchema, insertWorkspaceMemberSchema, createTeamSchema, updateProfileSchema } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { z } from "zod";
 
@@ -13,11 +13,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      let user = await storage.getUser(userId);
+      
+      // If user doesn't exist in storage, create them from the auth claims
+      if (!user) {
+        const claims = req.user.claims;
+        user = await storage.upsertUser({
+          id: userId,
+          email: claims.email,
+          firstName: claims.first_name || "User",
+          lastName: claims.last_name,
+          profileImageUrl: claims.profile_image_url,
+        });
+      }
+      
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Profile routes
+  app.patch('/api/profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = updateProfileSchema.parse(req.body);
+      
+      const updatedUser = await storage.updateUser(userId, validatedData);
+      if (!updatedUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      res.json(updatedUser);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Validation failed", 
+          details: error.errors 
+        });
+      }
+      console.error("Error updating profile:", error);
+      res.status(500).json({ error: "Failed to update profile" });
     }
   });
 

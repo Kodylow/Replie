@@ -284,7 +284,53 @@ export default function MainContent({ searchResults, isSearching = false }: Main
                 className="min-h-[100px] resize-none border-0 bg-transparent text-base focus-visible:ring-0 p-4"
                 data-testid="input-project-idea"
               />
-              {/* App Type (horizontal scroll) */}
+              {/* Bottom Controls */}
+              <div className="flex items-center justify-between px-3 py-2 border-t border-border">
+                <div className="flex items-center gap-3">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="p-1.5 h-7 w-7"
+                    data-testid="button-attach"
+                  >
+                    <Paperclip className="w-4 h-4" />
+                  </Button>
+                  
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="flex items-center gap-1 text-sm text-muted-foreground h-7 px-2"
+                    data-testid="button-auto-theme"
+                  >
+                    Auto theme
+                    <ChevronDown className="w-3 h-3" />
+                  </Button>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="p-1.5 h-7 w-7"
+                    data-testid="button-link"
+                  >
+                    <Link className="w-4 h-4" />
+                  </Button>
+                  
+                  <Button
+                    size="sm"
+                    onClick={handleStartChat}
+                    disabled={!projectIdea.trim() || createProjectMutation.isPending}
+                    data-testid="button-start-chat"
+                    className="flex items-center gap-2 h-8"
+                  >
+                    Start chat
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* App Type (horizontal scroll) - moved below controls */}
               <div className="border-t border-border px-3 py-2 overflow-x-auto whitespace-nowrap">
                 <div className="flex items-center gap-2">
                   {categories.map((category) => (
@@ -308,52 +354,6 @@ export default function MainContent({ searchResults, isSearching = false }: Main
                       )}
                     </button>
                   ))}
-                </div>
-              </div>
-              
-              {/* Bottom Controls */}
-              <div className="flex items-center justify-between p-3 border-t border-border">
-                <div className="flex items-center gap-3">
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    className="p-2 h-8 w-8"
-                    data-testid="button-attach"
-                  >
-                    <Paperclip className="w-4 h-4" />
-                  </Button>
-                  
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    className="flex items-center gap-1 text-sm text-muted-foreground"
-                    data-testid="button-auto-theme"
-                  >
-                    Auto theme
-                    <ChevronDown className="w-3 h-3" />
-                  </Button>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    className="p-2 h-8 w-8"
-                    data-testid="button-link"
-                  >
-                    <Link className="w-4 h-4" />
-                  </Button>
-                  
-                  <Button
-                    size="sm"
-                    onClick={handleStartChat}
-                    disabled={!projectIdea.trim() || createProjectMutation.isPending}
-                    data-testid="button-start-chat"
-                    className="flex items-center gap-2"
-                  >
-                    Start chat
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
                 </div>
               </div>
             </div>

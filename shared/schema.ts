@@ -20,6 +20,7 @@ export const users = pgTable("users", {
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
+  bio: text("bio"),
   profileImageUrl: varchar("profile_image_url"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -137,3 +138,12 @@ export const createTeamSchema = z.object({
 });
 
 export type CreateTeamRequest = z.infer<typeof createTeamSchema>;
+
+// Profile update request schema
+export const updateProfileSchema = z.object({
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  bio: z.string().max(140, "Bio must be 140 characters or less").optional(),
+});
+
+export type UpdateProfileRequest = z.infer<typeof updateProfileSchema>;

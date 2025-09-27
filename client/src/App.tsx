@@ -16,6 +16,7 @@ import Usage from "@/pages/Usage";
 import Analytics from "@/pages/Analytics";
 import Members from "@/pages/Members";
 import TeamCreation from "@/pages/TeamCreation";
+import Account from "@/pages/Account";
 import NotFound from "@/pages/not-found";
 import ProjectDetail from "@/pages/ProjectDetail";
 import type { Project } from '@shared/schema'
@@ -47,6 +48,7 @@ function Router({ searchResults, isSearching }: { searchResults: Project[], isSe
           <Route path="/members">
             <Members searchResults={searchResults} isSearching={isSearching} />
           </Route>
+          <Route path="/account" component={Account} />
           <Route path="/teams/new" component={TeamCreation} />
           <Route path="/project/:id" component={ProjectDetail} />
           <Route path="/">
