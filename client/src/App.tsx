@@ -120,7 +120,7 @@ function AppContent() {
     if (isSpecialPage) {
       return (
         <div className="h-screen flex flex-col bg-background">
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-auto">
             <Router searchResults={searchResults} isSearching={isSearching} />
           </div>
         </div>
@@ -131,7 +131,7 @@ function AppContent() {
     return (
       <div className="h-screen flex flex-col bg-background">
         <MobileHeader />
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-auto">
           {mobileActiveTab === 'create' && <MobileCreateTab />}
           {mobileActiveTab === 'apps' && <MobileAppsTab />}
           {mobileActiveTab === 'account' && <MobileAccountTab />}

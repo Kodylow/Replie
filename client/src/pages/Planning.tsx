@@ -166,7 +166,7 @@ export default function Planning() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col items-center px-6 py-8">
+      <div className="flex-1 flex flex-col items-center px-6 py-8 overflow-auto">
 
         {/* After chat started - show user message */}
         {userMessage && (
