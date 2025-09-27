@@ -192,25 +192,6 @@ export class MemStorage implements IStorage {
         updatedAt: now,
       };
       this.users.set(newUser.id, newUser);
-
-      // Create personal workspace for new user
-      await this.createWorkspace({
-        name: "Personal",
-        type: "personal",
-        slug: `personal-${newUser.id.slice(0, 8)}`,
-        description: "Your personal workspace"
-      });
-
-      // Add user as owner of their personal workspace
-      const personalWorkspace = await this.getDefaultWorkspace(newUser.id);
-      if (personalWorkspace) {
-        await this.addWorkspaceMember({
-          workspaceId: personalWorkspace.id,
-          userId: newUser.id,
-          role: "owner"
-        });
-      }
-
       return newUser;
     }
   }

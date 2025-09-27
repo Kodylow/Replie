@@ -126,9 +126,9 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
                 aria-label="Open navigation menu"
                 data-testid="button-logo-menu"
               >
-                <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ backgroundColor: '#F26207' }}>
-                  <span className="text-white text-[11px] font-bold">R</span>
-                </div>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="text-[#F26207]">
+                  <path d="M5.25 4.125C5.25 3.504 5.754 3 6.375 3h5.25c.621 0 1.125.504 1.125 1.125V9H6.375A1.125 1.125 0 0 1 5.25 7.875v-3.75ZM12.75 9h6.375c.621 0 1.125.504 1.125 1.125v3.75c0 .621-.504 1.125-1.125 1.125H12.75V9ZM5.25 16.125c0-.621.504-1.125 1.125-1.125h6.375v4.875c0 .621-.504 1.125-1.125 1.125h-5.25a1.125 1.125 0 0 1-1.125-1.125v-3.75Z" />
+                </svg>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" side="right" className="w-72">
