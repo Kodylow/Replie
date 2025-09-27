@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronRight, ChevronDown, Info, ExternalLink } from 'lucide-react'
+import { ChevronRight, ChevronDown, Info, ExternalLink, Bot, Globe } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -17,7 +17,7 @@ interface UsageResourceItem {
 
 interface UsageSection {
   name: string
-  icon?: string
+  icon?: any
   items: UsageResourceItem[]
   isExpanded?: boolean
 }
@@ -25,7 +25,7 @@ interface UsageSection {
 const USAGE_DATA: UsageSection[] = [
   {
     name: 'AI',
-    icon: '🤖',
+    icon: Bot,
     items: [
       {
         name: 'Agent Usage',
@@ -46,7 +46,7 @@ const USAGE_DATA: UsageSection[] = [
   },
   {
     name: 'Published Apps',
-    icon: '🌐',
+    icon: Globe,
     items: [
       {
         name: 'Outbound Data Transfer (GiB)',
@@ -185,6 +185,7 @@ function ResourceItem({ item }: { item: UsageResourceItem }) {
 
 function UsageSection({ section }: { section: UsageSection }) {
   const [isOpen, setIsOpen] = useState(section.isExpanded ?? true)
+  const IconComponent = section.icon
   
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -195,7 +196,8 @@ function UsageSection({ section }: { section: UsageSection }) {
           ) : (
             <ChevronRight className="w-4 h-4 text-muted-foreground" />
           )}
-          <span className="text-lg font-medium">{section.icon} {section.name}</span>
+          <IconComponent className="w-5 h-5" />
+          <span className="text-lg font-medium">{section.name}</span>
         </div>
       </CollapsibleTrigger>
       
@@ -258,7 +260,7 @@ export default function Usage({ searchResults = [], isSearching }: UsageProps) {
                   <h3 className="text-sm font-medium text-muted-foreground">Your plan</h3>
                   <div className="space-y-1">
                     <p className="font-semibold" data-testid="text-plan-name">Replit Teams</p>
-                    <Button variant="ghost" size="sm" className="h-auto p-0 text-xs text-primary" data-testid="button-manage-plan">
+                    <Button variant="ghost" size="sm" data-testid="button-manage-plan">
                       Manage
                     </Button>
                   </div>
@@ -284,7 +286,7 @@ export default function Usage({ searchResults = [], isSearching }: UsageProps) {
                       <p>Usage alert: $0.01</p>
                       <p>Usage budget: $150</p>
                     </div>
-                    <Button variant="ghost" size="sm" className="h-auto p-0 text-xs text-primary" data-testid="button-manage-usage">
+                    <Button variant="ghost" size="sm" data-testid="button-manage-usage">
                       Manage
                     </Button>
                   </div>
@@ -312,8 +314,8 @@ export default function Usage({ searchResults = [], isSearching }: UsageProps) {
               </div>
               <p className="text-sm text-muted-foreground">
                 Updates take up to 1 hour and may not reflect the latest usage data.{' '}
-                <Button variant="ghost" size="sm" className="h-auto p-0 text-xs text-primary">
-                  See previous invoices.
+                <Button variant="ghost" size="sm">
+                  See previous invoices
                 </Button>
               </p>
             </CardHeader>
