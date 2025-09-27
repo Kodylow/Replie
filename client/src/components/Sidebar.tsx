@@ -235,7 +235,7 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
 
       {/* Import */}
       <div className="px-4 pb-4">
-        <ActionButton icon={Upload} label="Import code or design" onClick={() => console.log('Import clicked')} />
+        <ActionButton icon={Upload} label="Import code or design" onClick={() => setLocation('/import')} />
       </div>
 
       <Separator className="mx-4 bg-sidebar-border" />

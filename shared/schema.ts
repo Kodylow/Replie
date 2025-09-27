@@ -56,6 +56,9 @@ export const projects = pgTable("projects", {
   isPrivate: text("is_private").notNull().default('true'), // 'true' or 'false' as text
   backgroundColor: text("background_color").notNull().default('bg-gradient-to-br from-blue-500 to-purple-600'),
   deploymentStatus: text("deployment_status"), // 'published', 'failed', null
+  importSource: text("import_source"), // 'github', 'zip', 'clone', null
+  importUrl: text("import_url"), // original repository URL or source
+  importBranch: text("import_branch"), // imported branch name
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
   updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
 });
@@ -147,3 +150,17 @@ export const updateProfileSchema = z.object({
 });
 
 export type UpdateProfileRequest = z.infer<typeof updateProfileSchema>;
+
+// GitHub import request schema
+export const githubImportSchema = z.object({
+  repositoryUrl: z.string().url("Must be a valid GitHub repository URL")
+    .refine((url) => url.includes('github.com'), "Must be a GitHub repository URL"),
+  branch: z.string().min(1, "Branch name is required").default("main"),
+  workspaceId: z.string().min(1, "Workspace is required"),
+  projectName: z.string().min(1, "Project name is required"),
+  projectDescription: z.string().optional(),
+  category: z.enum(['web', 'data', 'game', 'general', 'agents']).default('web'),
+  isPrivate: z.boolean().default(true),
+});
+
+export type GitHubImportRequest = z.infer<typeof githubImportSchema>;

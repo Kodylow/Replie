@@ -1,9 +1,10 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertProjectSchema, insertAppSchema, insertWorkspaceSchema, insertWorkspaceMemberSchema, createTeamSchema, updateProfileSchema } from "@shared/schema";
+import { insertProjectSchema, insertAppSchema, insertWorkspaceSchema, insertWorkspaceMemberSchema, createTeamSchema, updateProfileSchema, githubImportSchema } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { z } from "zod";
+import { Octokit } from '@octokit/rest';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware setup
@@ -582,6 +583,174 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error searching apps:", error);
       res.status(500).json({ error: "Failed to search apps" });
+    }
+  });
+
+  // GitHub Integration Helper Functions
+  let connectionSettings: any;
+
+  async function getAccessToken() {
+    if (connectionSettings && connectionSettings.settings.expires_at && new Date(connectionSettings.settings.expires_at).getTime() > Date.now()) {
+      return connectionSettings.settings.access_token;
+    }
+    
+    const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME
+    const xReplitToken = process.env.REPL_IDENTITY 
+      ? 'repl ' + process.env.REPL_IDENTITY 
+      : process.env.WEB_REPL_RENEWAL 
+      ? 'depl ' + process.env.WEB_REPL_RENEWAL 
+      : null;
+
+    if (!xReplitToken) {
+      throw new Error('X_REPLIT_TOKEN not found for repl/depl');
+    }
+
+    connectionSettings = await fetch(
+      'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=github',
+      {
+        headers: {
+          'Accept': 'application/json',
+          'X_REPLIT_TOKEN': xReplitToken
+        }
+      }
+    ).then(res => res.json()).then(data => data.items?.[0]);
+
+    const accessToken = connectionSettings?.settings?.access_token || connectionSettings.settings?.oauth?.credentials?.access_token;
+
+    if (!connectionSettings || !accessToken) {
+      throw new Error('GitHub not connected');
+    }
+    return accessToken;
+  }
+
+  // WARNING: Never cache this client.
+  // Access tokens expire, so a new client must be created each time.
+  // Always call this function again to get a fresh client.
+  async function getUncachableGitHubClient() {
+    const accessToken = await getAccessToken();
+    return new Octokit({ auth: accessToken });
+  }
+
+  // Import Routes
+  
+  // GitHub Repository Import
+  app.post("/api/import/github", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = githubImportSchema.parse(req.body);
+      
+      // Check if user is a member of the target workspace
+      const isMember = await storage.isWorkspaceMember(validatedData.workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to workspace" });
+      }
+
+      // Get GitHub client
+      let octokit;
+      try {
+        octokit = await getUncachableGitHubClient();
+      } catch (error) {
+        return res.status(401).json({ 
+          error: "GitHub not connected", 
+          message: "Please connect your GitHub account in integrations." 
+        });
+      }
+
+      // Parse repository URL to extract owner and repo
+      let repoOwner: string, repoName: string;
+      try {
+        const url = new URL(validatedData.repositoryUrl);
+        const pathParts = url.pathname.split('/').filter(part => part.length > 0);
+        if (pathParts.length < 2) {
+          throw new Error("Invalid repository URL format");
+        }
+        repoOwner = pathParts[0];
+        repoName = pathParts[1].replace(/\.git$/, '');
+      } catch (error) {
+        return res.status(400).json({ 
+          error: "Invalid repository URL", 
+          message: "Please provide a valid GitHub repository URL." 
+        });
+      }
+
+      // Validate repository access and fetch metadata
+      let repoData;
+      try {
+        const { data } = await octokit.rest.repos.get({
+          owner: repoOwner,
+          repo: repoName,
+        });
+        repoData = data;
+      } catch (error: any) {
+        if (error.status === 404) {
+          return res.status(404).json({ 
+            error: "Repository not found", 
+            message: "The repository does not exist or you don't have access to it." 
+          });
+        }
+        console.error("Error fetching repository:", error);
+        return res.status(500).json({ 
+          error: "Failed to access repository", 
+          message: "Unable to fetch repository information from GitHub." 
+        });
+      }
+
+      // Validate branch exists
+      try {
+        await octokit.rest.repos.getBranch({
+          owner: repoOwner,
+          repo: repoName,
+          branch: validatedData.branch,
+        });
+      } catch (error: any) {
+        if (error.status === 404) {
+          return res.status(404).json({ 
+            error: "Branch not found", 
+            message: `Branch "${validatedData.branch}" does not exist in the repository.` 
+          });
+        }
+        console.error("Error fetching branch:", error);
+        return res.status(500).json({ 
+          error: "Failed to validate branch", 
+          message: "Unable to validate the specified branch." 
+        });
+      }
+
+      // Create project with import metadata
+      const projectData = {
+        workspaceId: validatedData.workspaceId,
+        title: validatedData.projectName,
+        description: validatedData.projectDescription || repoData.description || `Imported from ${repoData.full_name}`,
+        category: validatedData.category,
+        isPrivate: validatedData.isPrivate ? 'true' : 'false',
+        importSource: 'github' as const,
+        importUrl: validatedData.repositoryUrl,
+        importBranch: validatedData.branch,
+      };
+
+      const project = await storage.createProject(projectData);
+
+      res.status(201).json({
+        ...project,
+        message: "Repository imported successfully",
+        sourceRepository: {
+          name: repoData.name,
+          fullName: repoData.full_name,
+          description: repoData.description,
+          language: repoData.language,
+          stars: repoData.stargazers_count,
+          forks: repoData.forks_count,
+        }
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Validation failed", 
+          details: error.errors 
+        });
+      }
+      console.error("Error importing GitHub repository:", error);
+      res.status(500).json({ error: "Failed to import repository" });
     }
   });
 
