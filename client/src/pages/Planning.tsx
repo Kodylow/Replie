@@ -44,12 +44,24 @@ export default function Planning() {
     }
   }, [location]);
 
-  // Auto-start the chat when message is set
+  // Auto-start the chat when message is set and workspace is ready
   useEffect(() => {
-    if (userMessage && hasStartedChat && !conversationId && !isTyping && !replieResponse) {
+    if (userMessage && hasStartedChat && !conversationId && !isTyping && !replieResponse && currentWorkspace?.id) {
+      console.log('Auto-starting chat with:', userMessage);
       chatMutation.mutate(userMessage);
+      
+      // Fallback timeout - show fallback response if nothing happens in 10 seconds
+      const timeoutId = setTimeout(() => {
+        if (!replieResponse && !isTyping) {
+          console.log('Timeout reached, showing fallback response');
+          setReplieResponse(generatePlanningResponse());
+          setShowModeSelection(true);
+        }
+      }, 10000);
+      
+      return () => clearTimeout(timeoutId);
     }
-  }, [userMessage, hasStartedChat, conversationId, isTyping, replieResponse]);
+  }, [userMessage, hasStartedChat, conversationId, isTyping, replieResponse, currentWorkspace?.id]);
 
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
