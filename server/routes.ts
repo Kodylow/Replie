@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertProjectSchema, insertAppSchema } from "@shared/schema";
+import { insertProjectSchema, insertAppSchema, insertWorkspaceSchema, insertWorkspaceMemberSchema } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { z } from "zod";
 
@@ -18,6 +18,176 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Workspace routes
+  
+  // Get user's workspaces
+  app.get("/api/workspaces", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspaces = await storage.getUserWorkspaces(userId);
+      res.json(workspaces);
+    } catch (error) {
+      console.error("Error fetching workspaces:", error);
+      res.status(500).json({ error: "Failed to fetch workspaces" });
+    }
+  });
+
+  // Get workspace by ID
+  app.get("/api/workspaces/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspaceId = req.params.id;
+      
+      // Check if user is a member of this workspace
+      const isMember = await storage.isWorkspaceMember(workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to workspace" });
+      }
+      
+      const workspace = await storage.getWorkspace(workspaceId);
+      if (!workspace) {
+        return res.status(404).json({ error: "Workspace not found" });
+      }
+      res.json(workspace);
+    } catch (error) {
+      console.error("Error fetching workspace:", error);
+      res.status(500).json({ error: "Failed to fetch workspace" });
+    }
+  });
+
+  // Create new workspace
+  app.post("/api/workspaces", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = insertWorkspaceSchema.parse(req.body);
+      
+      const workspace = await storage.createWorkspace(validatedData);
+      
+      // Add creator as owner
+      await storage.addWorkspaceMember({
+        workspaceId: workspace.id,
+        userId: userId,
+        role: "owner"
+      });
+      
+      res.status(201).json(workspace);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Validation failed", 
+          details: error.errors 
+        });
+      }
+      console.error("Error creating workspace:", error);
+      res.status(500).json({ error: "Failed to create workspace" });
+    }
+  });
+
+  // Update workspace
+  app.patch("/api/workspaces/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspaceId = req.params.id;
+      
+      // Check if user is a member of this workspace
+      const isMember = await storage.isWorkspaceMember(workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to workspace" });
+      }
+      
+      const updates = insertWorkspaceSchema.partial().parse(req.body);
+      const workspace = await storage.updateWorkspace(workspaceId, updates);
+      if (!workspace) {
+        return res.status(404).json({ error: "Workspace not found" });
+      }
+      res.json(workspace);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Validation failed", 
+          details: error.errors 
+        });
+      }
+      console.error("Error updating workspace:", error);
+      res.status(500).json({ error: "Failed to update workspace" });
+    }
+  });
+
+  // Get workspace members
+  app.get("/api/workspaces/:id/members", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspaceId = req.params.id;
+      
+      // Check if user is a member of this workspace
+      const isMember = await storage.isWorkspaceMember(workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to workspace" });
+      }
+      
+      const members = await storage.getWorkspaceMembers(workspaceId);
+      res.json(members);
+    } catch (error) {
+      console.error("Error fetching workspace members:", error);
+      res.status(500).json({ error: "Failed to fetch workspace members" });
+    }
+  });
+
+  // Add workspace member
+  app.post("/api/workspaces/:id/members", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspaceId = req.params.id;
+      
+      // Check if user is a member of this workspace
+      const isMember = await storage.isWorkspaceMember(workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to workspace" });
+      }
+      
+      const validatedData = insertWorkspaceMemberSchema.parse({
+        ...req.body,
+        workspaceId
+      });
+      
+      const member = await storage.addWorkspaceMember(validatedData);
+      res.status(201).json(member);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Validation failed", 
+          details: error.errors 
+        });
+      }
+      console.error("Error adding workspace member:", error);
+      res.status(500).json({ error: "Failed to add workspace member" });
+    }
+  });
+
+  // Remove workspace member
+  app.delete("/api/workspaces/:id/members/:userId", isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUserId = req.user.claims.sub;
+      const workspaceId = req.params.id;
+      const targetUserId = req.params.userId;
+      
+      // Check if user is a member of this workspace
+      const isMember = await storage.isWorkspaceMember(workspaceId, currentUserId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to workspace" });
+      }
+      
+      const success = await storage.removeWorkspaceMember(workspaceId, targetUserId);
+      if (!success) {
+        return res.status(404).json({ error: "Member not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error removing workspace member:", error);
+      res.status(500).json({ error: "Failed to remove workspace member" });
     }
   });
 
