@@ -16,7 +16,10 @@ export default function Landing() {
         </h1>
 
         <p className="text-muted-foreground mb-2">
-          This is a lightweight prototype of most of the logged in features of the Replit (outside the workspace, working on it).
+          Clone of most of the logged frontend of Replit
+        </p>
+        <p className="text-muted-foreground mb-2">
+        (excluding the Repl workspace. Working on it!).
         </p>
         <p className="text-muted-foreground mb-8">
           Remix this project to suggest new features or changes.
