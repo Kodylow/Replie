@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLocation } from 'wouter'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { Search, Plus, MoreHorizontal, ExternalLink, Settings, Trash2, Download } from 'lucide-react'
+import { Search, Plus, MoreHorizontal, ExternalLink, Settings, Trash2, Download, AlertTriangle, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuth, useAuthError } from '@/hooks/useAuth'
 import { useWorkspace } from '@/contexts/WorkspaceContext'
 import {
   Table,
@@ -28,7 +28,11 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { useToast } from '@/hooks/use-toast'
-import { queryClient } from '@/lib/queryClient'
+import { queryClient, getQueryFn, apiRequest, ApiError, isNetworkError } from '@/lib/queryClient'
+import { ErrorBoundary } from '@/components/ui/error-boundary'
+import { QueryErrorBoundary } from '@/components/ui/query-error-boundary'
+import { LoadingWrapper, TableLoading, EmptyState } from '@/components/ui/loading-states'
+import { ButtonLoading } from '@/components/ui/loading-spinner'
 import type { App, InsertApp } from '@shared/schema'
 
 const appIcons = [
@@ -83,7 +87,7 @@ interface AppsProps {
   isSearching: boolean
 }
 
-export default function Apps({ searchResults = [], isSearching }: AppsProps) {
+function AppsContent({ searchResults = [], isSearching }: AppsProps) {
   const [, setLocation] = useLocation()
   const [searchQuery, setSearchQuery] = useState('')
   const [filterMode, setFilterMode] = useState<'all' | 'creator' | 'me' | 'published'>('all')
@@ -96,16 +100,28 @@ export default function Apps({ searchResults = [], isSearching }: AppsProps) {
   const [newAppVisibility, setNewAppVisibility] = useState<'private' | 'public'>('private')
   const { toast } = useToast()
   const { user } = useAuth()
+  const { handleAuthError } = useAuthError()
   const { workspaces, currentWorkspace } = useWorkspace()
 
-  // Fetch all apps for current workspace
-  const { data: apps = [], isLoading } = useQuery<App[]>({
+  // Fetch all apps for current workspace with enhanced error handling
+  const { 
+    data: apps = [], 
+    isLoading, 
+    error, 
+    refetch 
+  } = useQuery<App[]>({
     queryKey: ['/api/workspaces', currentWorkspace?.id, 'apps'],
-    queryFn: () => {
-      if (!currentWorkspace) return []
-      return fetch(`/api/workspaces/${currentWorkspace.id}/apps`).then(res => res.json())
+    queryFn: getQueryFn(),
+    enabled: !!currentWorkspace,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    refetchOnWindowFocus: false,
+    retry: (failureCount, error) => {
+      // Don't retry if workspace doesn't exist
+      const apiError = error as ApiError;
+      if (apiError.status === 404) return false;
+      return failureCount < 2;
     },
-    enabled: !!currentWorkspace
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
   })
 
   // Filter apps locally (ignore shared search for now since it's project-focused)
@@ -128,96 +144,185 @@ export default function Apps({ searchResults = [], isSearching }: AppsProps) {
     return matchesSearch && matchesFilter
   })
 
-  // Create app mutation
+  // Helper function to handle app operation errors
+  const handleAppError = (error: unknown, operation: string, appTitle?: string) => {
+    console.error(`Error ${operation} app${appTitle ? ` ${appTitle}` : ''}:`, error);
+    
+    const apiError = error as ApiError;
+    
+    // Handle authentication/authorization errors
+    if (apiError.status === 401 || apiError.status === 403) {
+      handleAuthError(error, `${operation} app${appTitle ? ` ${appTitle}` : ''}`);
+      return;
+    }
+    
+    // Handle specific error cases
+    let title = `Failed to ${operation} app${appTitle ? ` ${appTitle}` : ''}`;
+    let description = "An unexpected error occurred. Please try again.";
+    
+    if (isNetworkError(error)) {
+      title = "Connection failed";
+      description = "Please check your internet connection and try again.";
+    } else if (apiError.status === 404) {
+      title = appTitle ? `App ${appTitle} not found` : "App not found";
+      description = "The app you're trying to access may have been deleted.";
+    } else if (apiError.status === 409) {
+      title = "Conflict error";
+      description = "An app with this name already exists in this workspace.";
+    } else if (apiError.status === 413) {
+      title = "App too large";
+      description = "The app content exceeds the maximum allowed size.";
+    } else if (apiError.status === 429) {
+      title = "Too many requests";
+      description = "Please wait a moment before trying again.";
+    } else if (apiError.status && apiError.status >= 500) {
+      title = "Server error";
+      description = "Our servers are experiencing issues. Please try again later.";
+    } else if (apiError.message) {
+      description = apiError.message;
+    }
+    
+    toast({
+      title,
+      description,
+      variant: 'destructive'
+    });
+  };
+
+  // Enhanced create app mutation
   const createAppMutation = useMutation({
     mutationFn: async (appData: InsertApp & { workspaceId: string }) => {
-      const { workspaceId, ...appDataWithoutWorkspaceId } = appData
-      const response = await fetch(`/api/workspaces/${workspaceId}/apps`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(appDataWithoutWorkspaceId)
-      })
-      if (!response.ok) throw new Error('Failed to create app')
-      return response.json()
+      if (!appData.workspaceId) {
+        throw new Error('No workspace selected. Please select a workspace first.');
+      }
+      
+      const { workspaceId, ...appDataWithoutWorkspaceId } = appData;
+      const response = await apiRequest(
+        'POST', 
+        `/api/workspaces/${workspaceId}/apps`,
+        appDataWithoutWorkspaceId
+      );
+      return await response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/workspaces', newAppWorkspaceId, 'apps'] })
-      queryClient.invalidateQueries({ queryKey: ['/api/workspaces'], exact: false })
-      setCreateDialogOpen(false)
-      setNewAppTitle('')
-      setNewAppWorkspaceId('')
-      setNewAppVisibility('private')
+    onSuccess: (newApp) => {
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/workspaces', newAppWorkspaceId, 'apps'] 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/workspaces'], 
+        exact: false 
+      });
+      
+      // Reset form state
+      setCreateDialogOpen(false);
+      setNewAppTitle('');
+      setNewAppWorkspaceId('');
+      setNewAppVisibility('private');
+      
       toast({
         title: 'App created!',
-        description: 'Your app has been created successfully.'
-      })
+        description: `${newApp.title} has been created successfully.`
+      });
     },
-    onError: (error) => {
-      console.error('Create app error:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to create app. Please try again.',
-        variant: 'destructive'
-      })
-    }
+    onError: (error) => handleAppError(error, 'create'),
+    retry: (failureCount, error) => {
+      if (failureCount >= 2) return false;
+      
+      const apiError = error as ApiError;
+      // Don't retry client errors
+      if (apiError.status && apiError.status >= 400 && apiError.status < 500) {
+        return false;
+      }
+      
+      return isNetworkError(error) || (apiError.status && apiError.status >= 500);
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
   })
 
-  // Update app mutation
+  // Enhanced update app mutation
   const updateAppMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: string, updates: Partial<InsertApp> }) => {
-      const response = await fetch(`/api/apps/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
-      })
-      if (!response.ok) throw new Error('Failed to update app')
-      return response.json()
+      const response = await apiRequest('PATCH', `/api/apps/${id}`, updates);
+      return await response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/workspaces', currentWorkspace?.id, 'apps'] })
-      queryClient.invalidateQueries({ queryKey: ['/api/workspaces'], exact: false })
-      setEditDialogOpen(false)
-      setEditingApp(null)
+    onSuccess: (updatedApp) => {
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/workspaces', currentWorkspace?.id, 'apps'] 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/apps', updatedApp.id] 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/workspaces'], 
+        exact: false 
+      });
+      
+      // Reset edit state
+      setEditDialogOpen(false);
+      setEditingApp(null);
+      
       toast({
         title: 'App updated!',
-        description: 'Your app has been updated successfully.'
-      })
+        description: `${updatedApp.title} has been updated successfully.`
+      });
     },
-    onError: (error) => {
-      console.error('Update app error:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to update app. Please try again.',
-        variant: 'destructive'
-      })
-    }
+    onError: (error) => handleAppError(error, 'update', editingApp?.title),
+    retry: (failureCount, error) => {
+      if (failureCount >= 2) return false;
+      
+      const apiError = error as ApiError;
+      if (apiError.status && apiError.status >= 400 && apiError.status < 500) {
+        return false;
+      }
+      
+      return isNetworkError(error) || (apiError.status && apiError.status >= 500);
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
   })
 
-  // Delete app mutation
+  // Enhanced delete app mutation
   const deleteAppMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await fetch(`/api/apps/${id}`, {
-        method: 'DELETE'
-      })
-      if (!response.ok) throw new Error('Failed to delete app')
+      await apiRequest('DELETE', `/api/apps/${id}`);
+      return id;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/workspaces', currentWorkspace?.id, 'apps'] })
-      queryClient.invalidateQueries({ queryKey: ['/api/workspaces'], exact: false })
-      setDeletingApp(null)
+    onSuccess: (deletedAppId) => {
+      const deletedAppTitle = deletingApp?.title || 'the app';
+      
+      // Invalidate and remove relevant queries
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/workspaces', currentWorkspace?.id, 'apps'] 
+      });
+      queryClient.removeQueries({ 
+        queryKey: ['/api/apps', deletedAppId] 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/workspaces'], 
+        exact: false 
+      });
+      
+      // Reset delete state
+      setDeletingApp(null);
+      
       toast({
         title: 'App deleted!',
-        description: 'Your app has been deleted successfully.'
-      })
+        description: `${deletedAppTitle} has been deleted successfully.`
+      });
     },
-    onError: (error) => {
-      console.error('Delete app error:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to delete app. Please try again.',
-        variant: 'destructive'
-      })
-    }
+    onError: (error) => handleAppError(error, 'delete', deletingApp?.title),
+    retry: (failureCount, error) => {
+      if (failureCount >= 1) return false; // Only retry once for delete
+      
+      const apiError = error as ApiError;
+      if (apiError.status && apiError.status >= 400 && apiError.status < 500) {
+        return false;
+      }
+      
+      return isNetworkError(error) || (apiError.status && apiError.status >= 500);
+    },
+    retryDelay: 2000,
   })
 
   const handleEditApp = (app: App) => {
@@ -263,10 +368,53 @@ export default function Apps({ searchResults = [], isSearching }: AppsProps) {
     }
   }
 
+  // Enhanced loading and error states
   if (isLoading) {
     return (
+      <div className="h-full flex flex-col">
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="h-6 w-16 bg-muted animate-pulse rounded"></div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-10 w-80 bg-muted animate-pulse rounded"></div>
+              <div className="h-8 w-32 bg-muted animate-pulse rounded"></div>
+              <div className="flex gap-1">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-8 w-20 bg-muted animate-pulse rounded"></div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="h-10 w-24 bg-muted animate-pulse rounded"></div>
+        </div>
+        
+        {/* Table loading */}
+        <div className="flex-1 overflow-auto">
+          <TableLoading columns={6} rows={8} />
+        </div>
+      </div>
+    )
+  }
+
+  if (error && !apps.length) {
+    return (
       <div className="h-full flex items-center justify-center">
-        <div className="text-muted-foreground">Loading apps...</div>
+        <div className="text-center max-w-md">
+          <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Failed to load apps</h3>
+          <p className="text-muted-foreground mb-4">
+            {isNetworkError(error) 
+              ? "Please check your internet connection and try again."
+              : "Something went wrong while loading your apps. Please try again."}
+          </p>
+          <Button onClick={() => refetch()} variant="outline" data-testid="button-retry-apps">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Try Again
+          </Button>
+        </div>
       </div>
     )
   }
@@ -349,8 +497,19 @@ export default function Apps({ searchResults = [], isSearching }: AppsProps) {
           <TableBody>
             {filteredApps.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                  {(searchQuery || isSearching) ? 'No apps found matching your search.' : 'No apps yet. Create your first app!'}
+                <TableCell colSpan={6} className="text-center py-12">
+                  <EmptyState
+                    title={(searchQuery || isSearching) ? "No apps found" : "No apps yet"}
+                    description={(searchQuery || isSearching) 
+                      ? "Try adjusting your search or filter criteria."
+                      : "Create your first app to get started with building something amazing."}
+                    action={!(searchQuery || isSearching) ? (
+                      <Button onClick={handleCreateApp} data-testid="button-create-first-app">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Create First App
+                      </Button>
+                    ) : undefined}
+                  />
                 </TableCell>
               </TableRow>
             ) : (
@@ -488,7 +647,12 @@ export default function Apps({ searchResults = [], isSearching }: AppsProps) {
                 disabled={!newAppTitle.trim() || !newAppWorkspaceId || createAppMutation.isPending}
                 data-testid="button-save-new-app"
               >
-                {createAppMutation.isPending ? 'Creating...' : 'Create App'}
+                <ButtonLoading 
+                  isLoading={createAppMutation.isPending}
+                  loadingText="Creating..."
+                >
+                  Create App
+                </ButtonLoading>
               </Button>
             </div>
           </div>
@@ -512,11 +676,27 @@ export default function Apps({ searchResults = [], isSearching }: AppsProps) {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               data-testid="button-confirm-delete"
             >
-              {deleteAppMutation.isPending ? 'Deleting...' : 'Delete'}
+              <ButtonLoading 
+                isLoading={deleteAppMutation.isPending}
+                loadingText="Deleting..."
+              >
+                Delete
+              </ButtonLoading>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  )
+}
+
+// Enhanced Apps page with error boundaries
+export default function Apps(props: AppsProps) {
+  return (
+    <ErrorBoundary level="page" showDetails={false}>
+      <QueryErrorBoundary level="page">
+        <AppsContent {...props} />
+      </QueryErrorBoundary>
+    </ErrorBoundary>
   )
 }

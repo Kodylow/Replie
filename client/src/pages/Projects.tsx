@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLocation } from 'wouter'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { Search, Plus, MoreHorizontal, ExternalLink, Settings, Trash2, Globe, Database, Gamepad2, Layers, Bot } from 'lucide-react'
+import { Search, Plus, MoreHorizontal, ExternalLink, Settings, Trash2, Globe, Database, Gamepad2, Layers, Bot, AlertTriangle, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -26,7 +26,12 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { useToast } from '@/hooks/use-toast'
-import { queryClient } from '@/lib/queryClient'
+import { queryClient, getQueryFn, apiRequest, ApiError, isNetworkError } from '@/lib/queryClient'
+import { ErrorBoundary } from '@/components/ui/error-boundary'
+import { QueryErrorBoundary } from '@/components/ui/query-error-boundary'
+import { LoadingWrapper, TableLoading, EmptyState } from '@/components/ui/loading-states'
+import { ButtonLoading } from '@/components/ui/loading-spinner'
+import { useAuth, useAuthError } from '@/hooks/useAuth'
 import ProjectEditDialog from '@/components/ProjectEditDialog'
 import type { Project, InsertProject } from '@shared/schema'
 
@@ -90,11 +95,26 @@ export default function Projects({ searchResults, isSearching }: ProjectsProps) 
   const [newProjectDescription, setNewProjectDescription] = useState('')
   const [newProjectCategory, setNewProjectCategory] = useState('web')
   const { toast } = useToast()
+  const { user } = useAuth()
+  const { handleAuthError } = useAuthError()
 
-  // Fetch projects
-  const { data: projects = [], isLoading } = useQuery<Project[]>({
+  // Fetch projects with enhanced error handling
+  const { 
+    data: projects = [], 
+    isLoading, 
+    error, 
+    refetch 
+  } = useQuery<Project[]>({
     queryKey: ['/api/projects'],
-    queryFn: () => fetch('/api/projects').then(res => res.json())
+    queryFn: getQueryFn(),
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    refetchOnWindowFocus: false,
+    retry: (failureCount, error) => {
+      const apiError = error as ApiError;
+      if (apiError.status === 404) return false;
+      return failureCount < 2;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
   })
 
   // Use search results from App-level if searching, otherwise filter locally
