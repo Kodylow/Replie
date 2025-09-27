@@ -34,7 +34,7 @@ export default function Landing() {
             size="lg" 
             variant="outline"
             className="border-[#F26207] text-[#F26207] hover:bg-[rgba(242,98,7,0.08)]"
-            onClick={() => (window.location.href = '/api/login')}
+            onClick={() => (window.open('https://replit.com/@kodylow/ReplitPrototyper?v=1#design_guidelines.md', '_blank'))}
             data-testid="button-remix"
           >
             Remix this project
