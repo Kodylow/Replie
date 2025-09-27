@@ -91,12 +91,13 @@ export default function MainContent({ searchResults, isSearching = false }: Main
           <ProjectCreationForm onProjectCreated={() => {}} />
         </div>
         
-        {/* Recent Projects */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-foreground">
-              {isSearching ? 'Search Results' : 'Recent Projects'}
-            </h2>
+        {/* Recent Projects - Only show for team workspaces */}
+        {currentWorkspace?.type === 'team' && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">
+                {isSearching ? 'Search Results' : 'Recent Projects'}
+              </h2>
             <button 
               onClick={() => refetch()}
               className="text-sm text-muted-foreground hover:text-foreground"
@@ -135,7 +136,8 @@ export default function MainContent({ searchResults, isSearching = false }: Main
               )}
             </div>
           )}
-        </div>
+          </div>
+        )}
       </div>
       
       {/* Edit Project Dialog */}

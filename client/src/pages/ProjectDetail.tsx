@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, useLocation } from 'wouter'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { ArrowLeft, Edit2, Trash2, ExternalLink, Calendar, Tag, FileText } from 'lucide-react'
+import { ArrowLeft, Edit2, Trash2, ExternalLink, Calendar, Tag, FileText, FolderOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { useToast } from '@/hooks/use-toast'
 import { queryClient } from '@/lib/queryClient'
+import { useWorkspace } from '@/contexts/WorkspaceContext'
 import ProjectEditDialog from '@/components/ProjectEditDialog'
 import type { Project, InsertProject } from '@shared/schema'
 
@@ -19,6 +20,7 @@ export default function ProjectDetail() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const { toast } = useToast()
+  const { currentWorkspace } = useWorkspace()
 
   // Fetch single project
   const { data: project, isLoading, error } = useQuery<Project>({
@@ -180,6 +182,22 @@ export default function ProjectDetail() {
       'other': 'Other'
     }
     return labels[category] || 'Unknown'
+  }
+
+  // Show message for personal workspaces - Projects are only available for team workspaces
+  if (currentWorkspace?.type === 'personal') {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <FolderOpen className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
+          <p className="text-muted-foreground mb-6">Projects are only available for team workspaces</p>
+          <Button onClick={() => setLocation('/')} data-testid="button-back-home">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Home
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   if (isLoading) {

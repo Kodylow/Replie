@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLocation } from 'wouter'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { Search, Plus, MoreHorizontal, ExternalLink, Settings, Trash2, Globe, Database, Gamepad2, Layers, Bot, AlertTriangle, RefreshCw } from 'lucide-react'
+import { Search, Plus, MoreHorizontal, ExternalLink, Settings, Trash2, Globe, Database, Gamepad2, Layers, Bot, AlertTriangle, RefreshCw, FolderOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -32,6 +32,7 @@ import { QueryErrorBoundary } from '@/components/ui/query-error-boundary'
 import { LoadingWrapper, TableLoading, EmptyState } from '@/components/ui/loading-states'
 import { ButtonLoading } from '@/components/ui/loading-spinner'
 import { useAuth, useAuthError } from '@/hooks/useAuth'
+import { useWorkspace } from '@/contexts/WorkspaceContext'
 import ProjectEditDialog from '@/components/ProjectEditDialog'
 import type { Project, InsertProject } from '@shared/schema'
 
@@ -97,6 +98,7 @@ export default function Projects({ searchResults, isSearching }: ProjectsProps) 
   const { toast } = useToast()
   const { user } = useAuth()
   const { handleAuthError } = useAuthError()
+  const { currentWorkspace } = useWorkspace()
 
   // Fetch projects with enhanced error handling
   const { 
@@ -106,7 +108,7 @@ export default function Projects({ searchResults, isSearching }: ProjectsProps) 
     refetch 
   } = useQuery<Project[]>({
     queryKey: ['/api/projects'],
-    queryFn: getQueryFn(),
+    queryFn: getQueryFn({ on401: "throw" }),
     staleTime: 2 * 60 * 1000, // 2 minutes
     refetchOnWindowFocus: false,
     retry: (failureCount, error) => {
@@ -240,6 +242,7 @@ export default function Projects({ searchResults, isSearching }: ProjectsProps) 
   const handleSaveNewProject = () => {
     if (newProjectTitle.trim()) {
       const projectData: InsertProject = {
+        workspaceId: currentWorkspace!.id,
         title: newProjectTitle.trim(),
         description: newProjectDescription.trim() || `A ${categories.find(c => c.id === newProjectCategory)?.label.toLowerCase()} project`,
         category: newProjectCategory,
@@ -256,6 +259,20 @@ export default function Projects({ searchResults, isSearching }: ProjectsProps) 
     if (deletingProject) {
       deleteProjectMutation.mutate(deletingProject.id)
     }
+  }
+
+  // Show message for personal workspaces - Projects are only available for team workspaces
+  if (currentWorkspace?.type === 'personal') {
+    return (
+      <div className="h-full flex flex-col">
+        <div className="flex items-center justify-center flex-1">
+          <div className="text-center">
+            <FolderOpen className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
+            <p className="text-muted-foreground">Projects are only available for team workspaces</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

@@ -44,6 +44,9 @@ export default function MobileCreateTab() {
   const createProjectMutation = useMutation({
     mutationFn: async (projectData: Omit<InsertProject, 'workspaceId'>) => {
       if (!currentWorkspace) throw new Error('No workspace selected')
+      if (currentWorkspace.type === 'personal') {
+        throw new Error('Projects are only available for team workspaces')
+      }
       const response = await apiRequest('POST', `/api/workspaces/${currentWorkspace.id}/projects`, projectData)
       return await response.json()
     },

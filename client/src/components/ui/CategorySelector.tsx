@@ -21,7 +21,7 @@ const categoryIcons = {
  */
 export function CategorySelector({ selectedCategory, onCategoryChange }: CategorySelectorProps) {
   return (
-    <div className="flex flex-wrap gap-2 justify-center">
+    <div className="flex flex-nowrap gap-2 overflow-x-auto">
       {categories.map((category) => {
         const IconComponent = categoryIcons[category.id];
         const isSelected = selectedCategory === category.id;
@@ -29,10 +29,10 @@ export function CategorySelector({ selectedCategory, onCategoryChange }: Categor
         return (
           <Button
             key={category.id}
-            variant={isSelected ? "default" : "outline"}
+            variant={isSelected ? "ghost" : "outline"}
             size="sm"
             onClick={() => onCategoryChange(category.id)}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 shrink-0"
             data-testid={`category-${category.id}`}
           >
             <IconComponent className="w-4 h-4" />

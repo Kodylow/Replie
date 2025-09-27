@@ -52,7 +52,7 @@ export function ProjectCreationForm({ onProjectCreated }: ProjectCreationFormPro
         />
         
         {/* Bottom Controls */}
-        <div className="flex items-center justify-between px-3 py-2 border-t border-border">
+        <div className="flex items-center justify-between px-3 py-2">
           <div className="flex items-center gap-3">
             <Button 
               variant="ghost" 
@@ -100,14 +100,12 @@ export function ProjectCreationForm({ onProjectCreated }: ProjectCreationFormPro
                 'Start coding'
               )}
             </Button>
+            
           </div>
+          
         </div>
-      </div>
-
-      {/* Category Selection */}
-      <div className="space-y-4">
-        <div className="text-center">
-          <p className="text-sm text-muted-foreground mb-4">Choose a category for your project</p>
+        {/* Inline Category Selector (inside bordered container) */}
+        <div className="px-3 pb-2">
           <CategorySelector 
             selectedCategory={selectedCategory}
             onCategoryChange={setSelectedCategory}

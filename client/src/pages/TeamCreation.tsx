@@ -23,79 +23,16 @@ interface TeamFormData {
   plan: "teams" | "enterprise";
 }
 
-export default function TeamCreation() {
-  const [, setLocation] = useLocation();
-  const [currentStep, setCurrentStep] = useState(1);
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [formData, setFormData] = useState<TeamFormData>({
-    organizationName: "",
-    useCase: "",
-    description: "",
-    billingEmail: "",
-    inviteEmails: "",
-    plan: "teams"
-  });
+function normalizeEmails(value: string): string {
+  const emails = value
+    .split(/[\s,]+/)
+    .map((e) => e.trim())
+    .filter((e) => e.length > 0);
+  return Array.from(new Set(emails)).join(", ");
+}
 
-  const createTeamMutation = useMutation({
-    mutationFn: async (data: CreateTeamRequest) => {
-      const response = await apiRequest("POST", "/api/teams", data);
-      return response.json();
-    },
-    onSuccess: (data: any) => {
-      toast({
-        title: "Team created successfully!",
-        description: `Welcome to ${data.workspace.name}`,
-      });
-      // Invalidate workspaces cache to refresh the sidebar
-      queryClient.invalidateQueries({ queryKey: ["/api/workspaces"] });
-      // Redirect to the new workspace
-      setLocation("/projects");
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Failed to create team",
-        description: error.message || "An error occurred while creating the team",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const updateFormData = (field: keyof TeamFormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleContinue = () => {
-    if (currentStep < 3) {
-      setCurrentStep(currentStep + 1);
-    } else {
-      // Handle final submission - create the team
-      const teamData: CreateTeamRequest = {
-        organizationName: formData.organizationName,
-        useCase: formData.useCase,
-        description: formData.description || undefined,
-        billingEmail: formData.billingEmail,
-        inviteEmails: formData.inviteEmails || undefined,
-        plan: formData.plan,
-      };
-      createTeamMutation.mutate(teamData);
-    }
-  };
-
-  const canContinue = () => {
-    switch (currentStep) {
-      case 1:
-        return formData.organizationName.trim() && formData.useCase && formData.billingEmail.trim();
-      case 2:
-        return formData.plan;
-      case 3:
-        return true; // Mock step, always allow continue
-      default:
-        return false;
-    }
-  };
-
-  const StepIndicator = () => (
+function StepIndicator({ currentStep }: { currentStep: number }) {
+  return (
     <div className="flex items-center justify-center mb-8">
       <div className="flex items-center space-x-4">
         <div className="flex items-center">
@@ -127,8 +64,10 @@ export default function TeamCreation() {
       </div>
     </div>
   );
+}
 
-  const SetupStep = () => (
+function SetupStep({ formData, updateFormData }: { formData: TeamFormData; updateFormData: (field: keyof TeamFormData, value: string) => void }) {
+  return (
     <div className="max-w-2xl mx-auto">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold mb-2">Set up your organization</h1>
@@ -196,6 +135,13 @@ export default function TeamCreation() {
               placeholder="Enter email addresses..."
               value={formData.inviteEmails}
               onChange={(e) => updateFormData("inviteEmails", e.target.value)}
+              onBlur={(e) => updateFormData("inviteEmails", normalizeEmails(e.target.value))}
+              onKeyDown={(e) => {
+                if (e.key === 'Tab') {
+                  const target = e.target as HTMLTextAreaElement;
+                  updateFormData("inviteEmails", normalizeEmails(target.value));
+                }
+              }}
               className="resize-none"
               rows={3}
             />
@@ -204,8 +150,10 @@ export default function TeamCreation() {
       </Card>
     </div>
   );
+}
 
-  const PlanStep = () => (
+function PlanStep({ formData, updateFormData }: { formData: TeamFormData; updateFormData: (field: keyof TeamFormData, value: string) => void }) {
+  return (
     <div className="max-w-4xl mx-auto">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold mb-2">Select a plan</h1>
@@ -324,8 +272,10 @@ export default function TeamCreation() {
       </div>
     </div>
   );
+}
 
-  const PaymentStep = () => (
+function PaymentStep() {
+  return (
     <div className="max-w-2xl mx-auto">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold mb-2">Enter payment information</h1>
@@ -451,6 +401,79 @@ export default function TeamCreation() {
       </div>
     </div>
   );
+}
+
+export default function TeamCreation() {
+  const [, setLocation] = useLocation();
+  const [currentStep, setCurrentStep] = useState(1);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [formData, setFormData] = useState<TeamFormData>({
+    organizationName: "",
+    useCase: "",
+    description: "",
+    billingEmail: "",
+    inviteEmails: "",
+    plan: "teams"
+  });
+
+  const createTeamMutation = useMutation({
+    mutationFn: async (data: CreateTeamRequest) => {
+      const response = await apiRequest("POST", "/api/teams", data);
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Team created successfully!",
+        description: `Welcome to ${data.workspace.name}`,
+      });
+      // Invalidate workspaces cache to refresh the sidebar
+      queryClient.invalidateQueries({ queryKey: ["/api/workspaces"] });
+      // Redirect to the new workspace
+      setLocation("/projects");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to create team",
+        description: error.message || "An error occurred while creating the team",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateFormData = (field: keyof TeamFormData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleContinue = () => {
+    if (currentStep < 3) {
+      setCurrentStep(currentStep + 1);
+    } else {
+      // Handle final submission - create the team
+      const teamData: CreateTeamRequest = {
+        organizationName: formData.organizationName,
+        useCase: formData.useCase,
+        description: formData.description || undefined,
+        billingEmail: formData.billingEmail,
+        inviteEmails: formData.inviteEmails || undefined,
+        plan: formData.plan,
+      };
+      createTeamMutation.mutate(teamData);
+    }
+  };
+
+  const canContinue = () => {
+    switch (currentStep) {
+      case 1:
+        return formData.organizationName.trim() && formData.useCase && formData.billingEmail.trim();
+      case 2:
+        return formData.plan;
+      case 3:
+        return true; // Mock step, always allow continue
+      default:
+        return false;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background p-8">
@@ -541,10 +564,14 @@ export default function TeamCreation() {
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto pr-96">
-        <StepIndicator />
+        <StepIndicator currentStep={currentStep} />
         
-        {currentStep === 1 && <SetupStep />}
-        {currentStep === 2 && <PlanStep />}
+        {currentStep === 1 && (
+          <SetupStep formData={formData} updateFormData={updateFormData} />
+        )}
+        {currentStep === 2 && (
+          <PlanStep formData={formData} updateFormData={updateFormData} />
+        )}
         {currentStep === 3 && <PaymentStep />}
 
         <div className="flex justify-center mt-8">

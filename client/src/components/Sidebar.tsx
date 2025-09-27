@@ -248,12 +248,14 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
           active={location === '/'} 
           onClick={() => setLocation('/')} 
         />
-        <NavItem 
-          icon={FolderOpen} 
-          label="Projects" 
-          active={location === '/projects'}
-          onClick={() => setLocation('/projects')} 
-        />
+        {currentWorkspace?.type === 'team' && (
+          <NavItem 
+            icon={FolderOpen} 
+            label="Projects" 
+            active={location === '/projects'}
+            onClick={() => setLocation('/projects')} 
+          />
+        )}
         <NavItem 
           icon={Package} 
           label="Apps" 
