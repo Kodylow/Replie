@@ -5,8 +5,14 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import Sidebar from '@/components/Sidebar'
+import MobileBottomNav from '@/components/MobileBottomNav'
+import MobileHeader from '@/components/MobileHeader'
+import MobileCreateTab from '@/components/MobileCreateTab'
+import MobileAppsTab from '@/components/MobileAppsTab'
+import MobileAccountTab from '@/components/MobileAccountTab'
 import Landing from "@/pages/Landing";
 import Home from "@/pages/Home";
 import Projects from "@/pages/Projects";
@@ -82,8 +88,10 @@ function App() {
 
 function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
+  const isMobile = useIsMobile();
   const [searchResults, setSearchResults] = useState<Project[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  const [mobileActiveTab, setMobileActiveTab] = useState<'apps' | 'create' | 'account'>('create')
 
   const handleSearchResults = (results: Project[]) => {
     setSearchResults(results)
@@ -99,6 +107,25 @@ function AppContent() {
     return <Router searchResults={searchResults} isSearching={isSearching} />
   }
 
+  // Mobile Layout
+  if (isMobile) {
+    return (
+      <div className="h-screen flex flex-col bg-background">
+        <MobileHeader />
+        <div className="flex-1 overflow-hidden">
+          {mobileActiveTab === 'create' && <MobileCreateTab />}
+          {mobileActiveTab === 'apps' && <MobileAppsTab />}
+          {mobileActiveTab === 'account' && <MobileAccountTab />}
+        </div>
+        <MobileBottomNav
+          activeTab={mobileActiveTab}
+          onTabChange={setMobileActiveTab}
+        />
+      </div>
+    );
+  }
+
+  // Desktop Layout (existing)
   return (
     <div className="h-screen flex bg-background">
       <Sidebar 
