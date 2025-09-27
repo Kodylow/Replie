@@ -1,9 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useLocation } from 'wouter'
-import { ArrowRight, Globe, Database, Gamepad2, Layers, Bot, ChevronDown, Paperclip, Link, Plus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import { useQuery } from '@tanstack/react-query'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,57 +11,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { useQuery, useMutation } from '@tanstack/react-query'
-import { queryClient } from '@/lib/queryClient'
-import { useToast } from '@/hooks/use-toast'
 import { useWorkspace } from '@/contexts/WorkspaceContext'
 import { useAuth } from '@/hooks/useAuth'
+import { useProjectManagement } from '@/hooks/useProjectManagement'
+import { WorkspaceDropdown } from '@/components/ui/WorkspaceDropdown'
+import { ProjectCreationForm } from '@/components/ui/ProjectCreationForm'
+import { formatTimeAgo } from '@/lib/utils/projectUtils'
 import ProjectCard from './ProjectCard'
 import ProjectEditDialog from './ProjectEditDialog'
 import type { Project, InsertProject } from '@shared/schema'
 
-const categories = [
-  { id: 'web', label: 'Web app', icon: <Globe className="w-4 h-4" /> },
-  { id: 'data', label: 'Data app', icon: <Database className="w-4 h-4" /> },
-  { id: 'game', label: '3D Game', icon: <Gamepad2 className="w-4 h-4" /> },
-  { id: 'general', label: 'General', icon: <Layers className="w-4 h-4" /> },
-  { id: 'agents', label: 'Agents & Automations', icon: <Bot className="w-4 h-4" />, badge: 'Beta' },
-]
-
-const backgroundColors = [
-  'bg-gradient-to-br from-orange-400 to-red-500',
-  'bg-gradient-to-br from-gray-700 to-gray-900',
-  'bg-gradient-to-br from-blue-500 to-purple-600',
-  'bg-gradient-to-br from-green-400 to-blue-500',
-  'bg-gradient-to-br from-purple-400 to-pink-500',
-  'bg-gradient-to-br from-yellow-400 to-orange-500',
-]
-
-function getRandomBackgroundColor(): string {
-  return backgroundColors[Math.floor(Math.random() * backgroundColors.length)]
-}
-
-function formatTimeAgo(date: Date): string {
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-  const diffDays = Math.floor(diffHours / 24)
-  
-  if (diffDays > 0) {
-    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
-  } else if (diffHours > 0) {
-    return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
-  } else {
-    return 'Just now'
-  }
-}
 
 interface MainContentProps {
   searchResults?: Project[]
@@ -73,13 +29,11 @@ interface MainContentProps {
 
 export default function MainContent({ searchResults, isSearching = false }: MainContentProps) {
   const [, setLocation] = useLocation()
-  const [projectIdea, setProjectIdea] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('web')
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [deletingProject, setDeletingProject] = useState<Project | null>(null)
-  const { toast } = useToast()
-  const { currentWorkspace, workspaces, setCurrentWorkspace, isLoading: workspaceLoading } = useWorkspace()
+  const { currentWorkspace, isLoading: workspaceLoading } = useWorkspace()
   const { user } = useAuth()
+  const { deleteProject, updateProject } = useProjectManagement()
 
   // Fetch projects from current workspace
   const { data: allProjects = [], isLoading, refetch } = useQuery<Project[]>({
@@ -91,91 +45,6 @@ export default function MainContent({ searchResults, isSearching = false }: Main
   // Use search results if searching, otherwise use all projects
   const projects = isSearching ? (searchResults || []) : allProjects
 
-  // Create project mutation
-  const createProjectMutation = useMutation({
-    mutationFn: async (projectData: Omit<InsertProject, 'workspaceId'>) => {
-      if (!currentWorkspace) throw new Error('No workspace selected')
-      const response = await fetch(`/api/workspaces/${currentWorkspace.id}/projects`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(projectData)
-      })
-      if (!response.ok) throw new Error('Failed to create project')
-      return response.json()
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/workspaces', currentWorkspace?.id, 'projects'] })
-      setProjectIdea('')
-      toast({
-        title: 'Project created!',
-        description: 'Your new project has been created successfully.'
-      })
-    },
-    onError: (error) => {
-      console.error('Error creating project:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to create project. Please try again.',
-        variant: 'destructive'
-      })
-    }
-  })
-
-  // Update project mutation
-  const updateProjectMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<InsertProject> }) => {
-      if (!currentWorkspace) throw new Error('No workspace selected')
-      const response = await fetch(`/api/workspaces/${currentWorkspace.id}/projects/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      })
-      if (!response.ok) throw new Error('Failed to update project')
-      return response.json()
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/workspaces', currentWorkspace?.id, 'projects'] })
-      toast({
-        title: 'Project updated!',
-        description: 'Your project has been updated successfully.'
-      })
-    },
-    onError: (error) => {
-      console.error('Error updating project:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to update project. Please try again.',
-        variant: 'destructive'
-      })
-    }
-  })
-
-  // Delete project mutation
-  const deleteProjectMutation = useMutation({
-    mutationFn: async (projectId: string) => {
-      if (!currentWorkspace) throw new Error('No workspace selected')
-      const response = await fetch(`/api/workspaces/${currentWorkspace.id}/projects/${projectId}`, {
-        method: 'DELETE'
-      })
-      if (!response.ok) throw new Error('Failed to delete project')
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/workspaces', currentWorkspace?.id, 'projects'] })
-      setDeletingProject(null)
-      toast({
-        title: 'Project deleted!',
-        description: 'Your project has been deleted successfully.'
-      })
-    },
-    onError: (error) => {
-      console.error('Error deleting project:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to delete project. Please try again.',
-        variant: 'destructive'
-      })
-    }
-  })
 
   // Show loading state while workspace is loading (after hooks to preserve hook order)
   if (workspaceLoading) {
@@ -200,18 +69,9 @@ export default function MainContent({ searchResults, isSearching = false }: Main
     )
   }
 
-  const handleStartChat = () => {
-    if (projectIdea.trim()) {
-      const projectData: Omit<InsertProject, 'workspaceId'> = {
-        title: projectIdea.trim(),
-        description: `A ${categories.find(c => c.id === selectedCategory)?.label.toLowerCase()} project`,
-        category: selectedCategory,
-        isPrivate: 'true',
-        backgroundColor: getRandomBackgroundColor()
-      }
-      
-      createProjectMutation.mutate(projectData)
-    }
+  const handleDeleteProject = (project: Project) => {
+    deleteProject.mutate(project.id)
+    setDeletingProject(null)
   }
 
   return (
@@ -219,165 +79,31 @@ export default function MainContent({ searchResults, isSearching = false }: Main
       <div className="max-w-4xl mx-auto px-6 py-16 md:py-24">
         {/* Workspace Dropdown */}
         <div className="flex justify-center mb-8">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                className="flex items-center gap-2 text-sm font-medium"
-                data-testid="button-workspace-dropdown"
-              >
-                <div className="w-6 h-6 bg-primary rounded-sm flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-xs">
-                    {currentWorkspace?.name.charAt(0).toUpperCase() || 'R'}
-                  </span>
-                </div>
-                {currentWorkspace?.name || 'Loading workspace...'}
-                <ChevronDown className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center">
-              {workspaces.map((workspace) => (
-                <DropdownMenuItem
-                  key={workspace.id}
-                  onClick={() => setCurrentWorkspace(workspace)}
-                  className={workspace.id === currentWorkspace?.id ? 'bg-accent' : ''}
-                  data-testid={`workspace-${workspace.slug}`}
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-primary rounded-sm flex items-center justify-center">
-                      <span className="text-primary-foreground font-bold text-xs">
-                        {workspace.name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    {workspace.name}
-                    <span className="text-muted-foreground text-xs ml-auto">({workspace.type})</span>
-                  </div>
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => console.log('Create Team clicked')}
-                data-testid="button-create-team"
-              >
-                <div className="flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  Create Team
-                </div>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <WorkspaceDropdown onCreateTeam={() => console.log('Create Team clicked')} />
         </div>
 
-        {/* Greeting */}
+        {/* Greeting and Project Creation */}
         <div className="text-center mb-8">
           <h1 className="text-2xl font-semibold text-foreground mb-6">
             {`Hi ${user?.firstName ?? 'there'}, what do you want to make?`}
           </h1>
           
-          {/* Project Idea Input */}
-          <div className="max-w-2xl mx-auto mb-6">
-            <div className="relative border border-border rounded-lg bg-background">
-              <Textarea
-                placeholder="Describe the idea you want to build..."
-                value={projectIdea}
-                onChange={(e) => setProjectIdea(e.target.value)}
-                className="min-h-[100px] resize-none border-0 bg-transparent text-base focus-visible:ring-0 p-4"
-                data-testid="input-project-idea"
-              />
-              {/* Bottom Controls */}
-              <div className="flex items-center justify-between px-3 py-2 border-t border-border">
-                <div className="flex items-center gap-3">
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    className="p-1.5 h-7 w-7"
-                    data-testid="button-attach"
-                  >
-                    <Paperclip className="w-4 h-4" />
-                  </Button>
-                  
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    className="flex items-center gap-1 text-sm text-muted-foreground h-7 px-2"
-                    data-testid="button-auto-theme"
-                  >
-                    Auto theme
-                    <ChevronDown className="w-3 h-3" />
-                  </Button>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    className="p-1.5 h-7 w-7"
-                    data-testid="button-link"
-                  >
-                    <Link className="w-4 h-4" />
-                  </Button>
-                  
-                  <Button
-                    size="sm"
-                    onClick={handleStartChat}
-                    disabled={!projectIdea.trim() || createProjectMutation.isPending}
-                    data-testid="button-start-chat"
-                    className="flex items-center gap-2 h-8"
-                  >
-                    Start chat
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* App Type (horizontal scroll) - moved below controls */}
-              <div className="border-t border-border px-3 py-2 overflow-x-auto whitespace-nowrap">
-                <div className="flex items-center gap-2">
-                  {categories.map((category) => (
-                    <button
-                      key={category.id}
-                      type="button"
-                      onClick={() => setSelectedCategory(category.id)}
-                      className={`flex items-center gap-2 px-3 h-8 rounded-full text-xs shrink-0 transition-colors ${
-                        selectedCategory === category.id
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground'
-                      }`}
-                      aria-pressed={selectedCategory === category.id}
-                    >
-                      {category.icon}
-                      <span className="truncate">{category.label}</span>
-                      {category.badge && (
-                        <span className="ml-1 rounded-sm bg-primary-foreground/10 px-1.5 py-0.5 text-[10px] leading-none">
-                          {category.badge}
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div className="mb-8" />
+          <ProjectCreationForm onProjectCreated={() => console.log('Project created')} />
         </div>
         
-        {/* Recent Apps */}
+        {/* Recent Projects */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-foreground">
-              {isSearching ? 'Search Results' : 'Recent Apps'}
+              {isSearching ? 'Search Results' : 'Recent Projects'}
             </h2>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              className="text-sm text-muted-foreground"
-              data-testid="button-view-all"
+            <button 
               onClick={() => refetch()}
+              className="text-sm text-muted-foreground hover:text-foreground"
+              data-testid="button-refresh"
             >
               Refresh
-              <ArrowRight className="w-4 h-4 ml-1" />
-            </Button>
+            </button>
           </div>
           
           {(isLoading && !isSearching) ? (
@@ -418,10 +144,10 @@ export default function MainContent({ searchResults, isSearching = false }: Main
         open={!!editingProject}
         onOpenChange={(open) => !open && setEditingProject(null)}
         onSave={async (projectId, data) => {
-          await updateProjectMutation.mutateAsync({ id: projectId, data })
+          await updateProject.mutateAsync({ id: projectId, data })
           setEditingProject(null)
         }}
-        isLoading={updateProjectMutation.isPending}
+        isLoading={updateProject.isPending}
       />
       
       {/* Delete Confirmation Dialog */}
@@ -436,12 +162,12 @@ export default function MainContent({ searchResults, isSearching = false }: Main
           <AlertDialogFooter>
             <AlertDialogCancel data-testid="button-delete-cancel">Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deletingProject && deleteProjectMutation.mutate(deletingProject.id)}
-              disabled={deleteProjectMutation.isPending}
+              onClick={() => deletingProject && handleDeleteProject(deletingProject)}
+              disabled={deleteProject.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               data-testid="button-delete-confirm"
             >
-              {deleteProjectMutation.isPending ? 'Deleting...' : 'Delete'}
+              {deleteProject.isPending ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -848,6 +848,8 @@ export class MemStorage implements IStorage {
       isPrivate: insertApp.isPrivate ?? 'true',
       isPublished: insertApp.isPublished ?? 'false',
       backgroundColor: insertApp.backgroundColor ?? 'bg-gradient-to-br from-blue-500 to-purple-600',
+      objectStoragePath: insertApp.objectStoragePath ?? null,
+      filesInitialized: insertApp.filesInitialized ?? 'false',
       createdAt: now,
       updatedAt: now,
     };

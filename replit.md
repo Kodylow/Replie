@@ -1,80 +1,45 @@
-# Overview
+# Replit Workspace Clone
 
-This is a Replit Dashboard Clone - a full-stack web application that recreates the core functionality and design of Replit's project dashboard. The application allows users to create, manage, and organize coding projects with a clean, developer-focused interface. It features project creation, categorization, search functionality, and a responsive design that mirrors Replit's established design language.
+## Overview
+This project is a full-stack web application that replicates and extends the core functionalities of Replit's workspace interface. It offers a comprehensive development environment with multi-workspace support, AI-powered assistance, real-time collaborative editing, and advanced import capabilities. The application aims to be a functional clone and a platform for prototyping new features and workflows, built with modern web technologies. It provides a complete development environment with multi-workspace support, AI-powered development assistance, real-time collaborative editing, and advanced import capabilities.
 
-# User Preferences
+## User Preferences
+**Preferred communication style**: Simple, everyday language that's accessible to developers of all skill levels.
+**Target audience**: Developers interested in modern web development patterns, Replit feature exploration, and collaborative development workflows.
 
-Preferred communication style: Simple, everyday language.
+## System Architecture
 
-# System Architecture
+### Frontend Architecture
+The frontend is built with **React 18**, **Vite** for fast builds, **shadcn/ui** (based on Radix UI) for components, and **Tailwind CSS** for styling, including a dark theme. **TanStack Query** manages server state, and **Wouter** handles client-side routing. It follows a mobile-first, responsive design approach with adaptive components and touch-optimized interactions. State management utilizes TanStack Query for server state, React Context for global application state, and local component state for UI specifics.
 
-## Frontend Architecture
-**Framework**: React 18 with TypeScript, built using Vite for fast development and optimized builds. The frontend follows a component-based architecture with shadcn/ui as the primary UI component library.
+### Backend Architecture
+The backend uses **Node.js 20** with **Express.js** and **TypeScript** for robust, type-safe API development. It provides a **RESTful API** for authentication, workspace and project management, application management, import workflows, AI chat integration, template browsing, and file operations. Key components include API route definitions, database abstraction, Replit OAuth middleware, and Google Cloud Storage services.
 
-**Styling**: Tailwind CSS with a comprehensive dark theme implementation. The design system includes custom color schemes, typography scales, and spacing units that closely match Replit's visual identity. CSS variables are used for theming flexibility.
+### Data Layer Architecture
+**PostgreSQL** is the primary relational database, managed with **Drizzle ORM** for type-safe operations. It employs a multi-tenant architecture with workspace-based data isolation. The schema includes core entities like `users`, `workspaces`, `projects`, `apps`, `templates`, and `chatConversations`, using UUID primary keys, timestamp tracking, JSONB columns, and array columns for flexible data storage.
 
-**State Management**: TanStack Query (React Query) for server state management, providing efficient data fetching, caching, and synchronization. Local component state is managed with React hooks.
+### UI/UX Decisions
+The application features a mobile-responsive design with native mobile navigation, touch-optimized interfaces, and responsive breakpoints. It implements a mobile-first design philosophy with dedicated mobile components, bottom tab navigation, and gesture-friendly interactions.
 
-**Routing**: Wouter for lightweight client-side routing, handling navigation between the home dashboard and individual project detail pages.
+### Feature Specifications
+*   **Workspace Management System**: Supports multi-workspace architecture (personal/team), role-based access control, team creation, and member management.
+*   **Dual Project Management**: Differentiates between Traditional Projects (code repositories) and Interactive Apps (live web applications), with categorization and privacy controls.
+*   **AI-Powered Development Assistant**: Integrates OpenAI GPT for interactive planning, context-aware code suggestions, architecture recommendations, and smart template suggestions.
+*   **Real-Time Code Editor**: Offers multi-file editing (HTML, CSS, JavaScript, JSON), live preview, integrated AI chat, auto-save, and resizable panel layouts.
+*   **Advanced Import System**: Allows importing from GitHub repositories, ZIP files, and pre-built templates, tracking import sources.
+*   **Authentication & Security**: Uses Replit OAuth for authentication, PostgreSQL for session management, and enforces multi-tenant data isolation and role-based permissions.
+*   **Template System**: Provides a rich library of categorized project starters with metadata and one-click cloning.
 
-## Backend Architecture
-**Runtime**: Node.js with Express.js server framework, configured for both development and production environments.
-
-**API Design**: RESTful API structure with endpoints prefixed under `/api`. The server implements CRUD operations for projects with proper error handling and validation.
-
-**Development Setup**: Vite integration for hot module replacement in development, with custom middleware for request logging and error handling.
-
-## Data Layer
-**Database**: PostgreSQL with Drizzle ORM for type-safe database interactions. The schema includes users and projects tables with appropriate relationships and constraints.
-
-**Schema Design**: 
-- Users table with username/password authentication
-- Projects table with title, description, category, privacy settings, and timestamps
-- Category system supporting web apps, data apps, games, general projects, and AI agents
-
-**Data Validation**: Zod schemas for runtime type checking and API request validation, ensuring data integrity across the application.
-
-## UI/UX Architecture
-**Component Library**: Extensive use of Radix UI primitives wrapped in custom shadcn/ui components for accessibility and consistency.
-
-**Design System**: Comprehensive design guidelines following Replit's aesthetic with defined color palettes, typography hierarchy, spacing system, and component patterns.
-
-**Responsive Design**: Mobile-first approach with proper breakpoints and adaptive layouts for different screen sizes.
-
-## Development Tooling
-**Build System**: Vite for fast development builds and optimized production bundles with proper asset handling.
-
-**Type Safety**: Full TypeScript implementation with strict configuration and shared types between frontend and backend.
-
-**Code Quality**: ESLint and Prettier integration for consistent code formatting and quality enforcement.
-
-# External Dependencies
-
-## Database Services
-- **Neon Database**: Serverless PostgreSQL database (@neondatabase/serverless) for data persistence
-- **Drizzle ORM**: Type-safe database toolkit for schema management and migrations
-
-## UI Component Library
-- **Radix UI**: Comprehensive set of accessible, unstyled UI primitives including dialogs, dropdowns, forms, and navigation components
-- **shadcn/ui**: Pre-built component library built on top of Radix UI with consistent styling
-
-## State Management & Data Fetching
-- **TanStack Query**: Server state management for API calls, caching, and data synchronization
-- **React Hook Form**: Form state management with validation integration
-
-## Styling & Design
-- **Tailwind CSS**: Utility-first CSS framework for responsive design
-- **Lucide React**: Icon library for consistent iconography throughout the application
-- **class-variance-authority**: Utility for creating component variants
-
-## Development Tools
-- **Vite**: Build tool and development server with hot module replacement
-- **TypeScript**: Static type checking for enhanced developer experience
-- **date-fns**: Date manipulation and formatting utilities
-
-## Validation & Forms
-- **Zod**: Schema validation library for runtime type checking
-- **@hookform/resolvers**: Integration between React Hook Form and validation libraries
-
-## Session Management
-- **connect-pg-simple**: PostgreSQL session store for Express sessions (prepared for authentication features)
+## External Dependencies
+*   **Database**: `@neondatabase/serverless` (PostgreSQL client)
+*   **Object Storage**: `@google-cloud/storage` (Google Cloud Storage)
+*   **AI Integration**: `openai` (OpenAI GPT API)
+*   **Version Control Integration**: `@octokit/rest` (GitHub API)
+*   **Frontend State Management**: `@tanstack/react-query`
+*   **ORM**: `drizzle-orm`
+*   **UI Components**: `@radix-ui/*`, `shadcn/ui`
+*   **Styling**: `tailwindcss`, `lucide-react` (icons)
+*   **Animations**: `framer-motion`
+*   **Build Tool**: `vite`
+*   **Type Checking**: `typescript`
+*   **Schema Validation**: `zod`
