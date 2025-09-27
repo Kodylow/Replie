@@ -73,29 +73,6 @@ export default function MainContent({ searchResults, isSearching = false }: Main
   const { toast } = useToast()
   const { currentWorkspace, isLoading: workspaceLoading } = useWorkspace()
 
-  // Show loading state while workspace is loading
-  if (workspaceLoading) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading workspace...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Show message if no workspace available
-  if (!currentWorkspace) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-muted-foreground">No workspace available</p>
-        </div>
-      </div>
-    )
-  }
-
   // Fetch projects from current workspace
   const { data: allProjects = [], isLoading, refetch } = useQuery<Project[]>({
     queryKey: ['/api/workspaces', currentWorkspace?.id, 'projects'],
@@ -191,6 +168,29 @@ export default function MainContent({ searchResults, isSearching = false }: Main
       })
     }
   })
+
+  // Show loading state while workspace is loading (after hooks to preserve hook order)
+  if (workspaceLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading workspace...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show message if no workspace available (after hooks to preserve hook order)
+  if (!currentWorkspace) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">No workspace available</p>
+        </div>
+      </div>
+    )
+  }
 
   const handleStartChat = () => {
     if (projectIdea.trim()) {
