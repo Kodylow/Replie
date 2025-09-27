@@ -100,6 +100,29 @@ export default function MobileCreateTab() {
                 data-testid="mobile-project-idea-input"
               />
               
+              {/* Category Pills */}
+              <div className="px-4 pb-3">
+                <div className="flex gap-2 overflow-x-auto">
+                  {categories.slice(0, 3).map((category) => (
+                    <button
+                      key={category.id}
+                      type="button"
+                      onClick={() => setSelectedCategory(category.id)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm shrink-0 transition-colors border ${
+                        selectedCategory === category.id
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background text-foreground border-border hover:bg-accent'
+                      }`}
+                      data-testid={`mobile-category-${category.id}`}
+                      aria-pressed={selectedCategory === category.id}
+                    >
+                      {category.icon}
+                      <span className="font-medium">{category.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
               {/* Bottom Controls */}
               <div className="flex items-center justify-between px-3 py-2 border-t border-border">
                 <div className="flex items-center gap-2">
@@ -119,6 +142,14 @@ export default function MobileCreateTab() {
                   >
                     <Mic className="w-4 h-4" />
                   </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    className="h-8 w-8"
+                    data-testid="mobile-link-button"
+                  >
+                    <Link className="w-4 h-4" />
+                  </Button>
                 </div>
                 
                 <Button
@@ -133,50 +164,6 @@ export default function MobileCreateTab() {
                 </Button>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Template Options */}
-        <div>
-          <div className="overflow-x-auto pb-2">
-            <div className="flex gap-3 px-1">
-              {categories.map((category) => (
-                <button
-                  key={category.id}
-                  type="button"
-                  onClick={() => setSelectedCategory(category.id)}
-                  className={`flex items-center gap-2 px-4 py-3 rounded-lg text-sm shrink-0 transition-colors min-w-[140px] ${
-                    selectedCategory === category.id
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground'
-                  }`}
-                  data-testid={`mobile-category-${category.id}`}
-                  aria-pressed={selectedCategory === category.id}
-                >
-                  {category.icon}
-                  <div className="flex flex-col items-start">
-                    <span className="font-medium">{category.label}</span>
-                    {category.badge && (
-                      <Badge variant="secondary" className="text-xs mt-1">
-                        {category.badge}
-                      </Badge>
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-          
-          {/* Scroll indicator dots */}
-          <div className="flex justify-center mt-4 gap-1">
-            {categories.map((_, index) => (
-              <div
-                key={index}
-                className={`w-2 h-2 rounded-full ${
-                  index === 0 ? 'bg-foreground' : 'bg-muted-foreground/30'
-                }`}
-              />
-            ))}
           </div>
         </div>
       </div>
