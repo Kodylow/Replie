@@ -1,9 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ArrowRight, Globe, Database, Gamepad2, Layers, Bot } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import { queryClient } from '@/lib/queryClient'
+import { useToast } from '@/hooks/use-toast'
 import CategoryButton from './CategoryButton'
 import ProjectCard from './ProjectCard'
+import type { Project, InsertProject } from '@shared/schema'
 
 const categories = [
   { id: 'web', label: 'Web app', icon: <Globe className="w-4 h-4" /> },
@@ -13,41 +17,85 @@ const categories = [
   { id: 'agents', label: 'Agents & Automations', icon: <Bot className="w-4 h-4" />, badge: 'Beta' },
 ]
 
-// TODO: Remove mock data when building real functionality
-const recentApps = [
-  {
-    id: 1,
-    title: 'CashflowRetro',
-    description: 'Waiting for you',
-    timeAgo: '29 hours ago',
-    isPrivate: true,
-    backgroundColor: 'bg-gradient-to-br from-orange-400 to-red-500'
-  },
-  {
-    id: 2,
-    title: 'StrikeAutoPilot',
-    timeAgo: '1 day ago',
-    isPrivate: true,
-    backgroundColor: 'bg-gradient-to-br from-gray-700 to-gray-900'
-  },
-  {
-    id: 3,
-    title: 'OmnicronPitch',
-    timeAgo: '3 days ago',
-    isPrivate: true,
-    backgroundColor: 'bg-gradient-to-br from-blue-500 to-purple-600'
-  }
+const backgroundColors = [
+  'bg-gradient-to-br from-orange-400 to-red-500',
+  'bg-gradient-to-br from-gray-700 to-gray-900',
+  'bg-gradient-to-br from-blue-500 to-purple-600',
+  'bg-gradient-to-br from-green-400 to-blue-500',
+  'bg-gradient-to-br from-purple-400 to-pink-500',
+  'bg-gradient-to-br from-yellow-400 to-orange-500',
 ]
+
+function getRandomBackgroundColor(): string {
+  return backgroundColors[Math.floor(Math.random() * backgroundColors.length)]
+}
+
+function formatTimeAgo(date: Date): string {
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+  const diffDays = Math.floor(diffHours / 24)
+  
+  if (diffDays > 0) {
+    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
+  } else if (diffHours > 0) {
+    return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
+  } else {
+    return 'Just now'
+  }
+}
 
 export default function MainContent() {
   const [projectIdea, setProjectIdea] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('web')
+  const { toast } = useToast()
+
+  // Fetch projects
+  const { data: projects = [], isLoading, refetch } = useQuery<Project[]>({
+    queryKey: ['/api/projects'],
+    queryFn: () => fetch('/api/projects').then(res => res.json())
+  })
+
+  // Create project mutation
+  const createProjectMutation = useMutation({
+    mutationFn: async (projectData: InsertProject) => {
+      const response = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(projectData)
+      })
+      if (!response.ok) throw new Error('Failed to create project')
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/projects'] })
+      setProjectIdea('')
+      toast({
+        title: 'Project created!',
+        description: 'Your new project has been created successfully.'
+      })
+    },
+    onError: (error) => {
+      console.error('Error creating project:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to create project. Please try again.',
+        variant: 'destructive'
+      })
+    }
+  })
 
   const handleStartChat = () => {
     if (projectIdea.trim()) {
-      console.log('Starting chat with idea:', projectIdea)
-      console.log('Selected category:', selectedCategory)
-      // TODO: Remove mock functionality - integrate with real project creation
+      const projectData: InsertProject = {
+        title: projectIdea.trim(),
+        description: `A ${categories.find(c => c.id === selectedCategory)?.label.toLowerCase()} project`,
+        category: selectedCategory,
+        isPrivate: 'true',
+        backgroundColor: getRandomBackgroundColor()
+      }
+      
+      createProjectMutation.mutate(projectData)
     }
   }
 
@@ -73,7 +121,7 @@ export default function MainContent() {
               size="sm"
               className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8"
               onClick={handleStartChat}
-              disabled={!projectIdea.trim()}
+              disabled={!projectIdea.trim() || createProjectMutation.isPending}
               data-testid="button-start-chat"
             >
               Start chat
@@ -120,26 +168,40 @@ export default function MainContent() {
               size="sm"
               className="text-sm text-muted-foreground"
               data-testid="button-view-all"
-              onClick={() => console.log('View all clicked')}
+              onClick={() => refetch()}
             >
-              View All
+              Refresh
               <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {recentApps.map((app) => (
-              <ProjectCard
-                key={app.id}
-                title={app.title}
-                description={app.description}
-                timeAgo={app.timeAgo}
-                isPrivate={app.isPrivate}
-                backgroundColor={app.backgroundColor}
-                onClick={() => console.log(`Opening app: ${app.title}`)}
-              />
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-48 bg-muted rounded-lg animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {projects.length === 0 ? (
+                <div className="col-span-full text-center py-8">
+                  <p className="text-muted-foreground">No projects yet. Create your first project above!</p>
+                </div>
+              ) : (
+                projects.map((project) => (
+                  <ProjectCard
+                    key={project.id}
+                    title={project.title}
+                    description={project.description || undefined}
+                    timeAgo={formatTimeAgo(new Date(project.updatedAt))}
+                    isPrivate={project.isPrivate === 'true'}
+                    backgroundColor={project.backgroundColor}
+                    onClick={() => console.log(`Opening project: ${project.title}`)}
+                  />
+                ))
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
