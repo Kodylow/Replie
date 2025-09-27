@@ -6,7 +6,8 @@ import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
-import type { Project } from '@shared/schema'
+import { useWorkspace } from '@/contexts/WorkspaceContext'
+import type { Project, App } from '@shared/schema'
 import { CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command'
 import { 
   DropdownMenu, 
@@ -64,32 +65,51 @@ interface SidebarProps {
   onClearSearch?: () => void
 }
 
+interface AppWithWorkspace extends App {
+  workspaceName: string
+}
+
 export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps) {
   const [, setLocation] = useLocation()
   const [location] = useLocation()
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [isCommandOpen, setIsCommandOpen] = useState(false)
+  const { workspaces } = useWorkspace()
 
-  // Search projects query
-  const { data: searchResults, isLoading: searchLoading } = useQuery<Project[]>({
-    queryKey: ['/api/projects/search', searchQuery],
+  // Search apps across all workspaces
+  const { data: searchResults, isLoading: searchLoading } = useQuery<AppWithWorkspace[]>({
+    queryKey: ['/api/apps/search', searchQuery],
     queryFn: async () => {
-      if (!searchQuery.trim()) return []
-      const response = await fetch(`/api/projects/search/${encodeURIComponent(searchQuery.trim())}`)
-      if (!response.ok) throw new Error('Search failed')
-      return response.json()
+      if (!searchQuery.trim() || workspaces.length === 0) return []
+      
+      // Search across all user's workspaces
+      const searchPromises = workspaces.map(async (workspace) => {
+        try {
+          const response = await fetch(`/api/workspaces/${workspace.id}/apps/search/${encodeURIComponent(searchQuery.trim())}`)
+          if (!response.ok) return []
+          const apps = await response.json()
+          return apps.map((app: App) => ({
+            ...app,
+            workspaceName: workspace.name
+          }))
+        } catch {
+          return []
+        }
+      })
+      
+      const results = await Promise.all(searchPromises)
+      return results.flat()
     },
-    enabled: !!searchQuery.trim(),
+    enabled: !!searchQuery.trim() && workspaces.length > 0,
   })
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value)
     if (value.trim()) {
       setIsSearching(true)
-      if (searchResults && onSearchResults) {
-        onSearchResults(searchResults)
-      }
+      // Note: We're now searching apps, not projects, so we don't pass results to onSearchResults
+      // which expects Project[] type. App search results are handled directly in the command dialog.
     } else {
       setIsSearching(false)
       if (onClearSearch) {
@@ -106,12 +126,8 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
     }
   }
 
-  // Update search results when query data changes
-  useEffect(() => {
-    if (isSearching && searchResults && onSearchResults) {
-      onSearchResults(searchResults)
-    }
-  }, [searchResults, isSearching, onSearchResults])
+  // Note: No longer passing app search results to parent component
+  // as onSearchResults expects Project[] but we're now searching App[]
   return (
     <div className="w-64 h-screen bg-sidebar border-r border-sidebar-border flex flex-col">
       {/* Header */}
@@ -299,7 +315,7 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
         }}
       >
         <CommandInput
-          placeholder="Search Apps in Replit - Demo"
+          placeholder="Search Apps"
           value={searchQuery}
           onValueChange={handleSearchChange}
         />
@@ -309,18 +325,25 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
           ) : !searchResults || searchResults.length === 0 ? (
             <CommandEmpty>No results found.</CommandEmpty>
           ) : (
-            <CommandGroup heading="Results">
-              {searchResults.map((project) => (
+            <CommandGroup heading="Apps">
+              {searchResults.map((app) => (
                 <CommandItem
-                  key={project.id}
-                  value={project.title}
+                  key={app.id}
+                  value={app.title}
                   onSelect={() => {
                     setIsCommandOpen(false)
-                    setLocation(`/project/${project.id}`)
+                    setLocation(`/apps`)
                     clearSearch()
                   }}
+                  className="flex items-center justify-between"
                 >
-                  {project.title}
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-sm flex items-center justify-center text-xs font-bold" style={{ background: app.backgroundColor }}>
+                      {app.title.charAt(0).toUpperCase()}
+                    </div>
+                    <span>{app.title}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">{app.workspaceName}</span>
                 </CommandItem>
               ))}
             </CommandGroup>
