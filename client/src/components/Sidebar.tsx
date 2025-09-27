@@ -170,7 +170,12 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
           active={location === '/projects'}
           onClick={() => setLocation('/projects')} 
         />
-        <NavItem icon={Package} label="Apps" onClick={() => console.log('Apps clicked')} />
+        <NavItem 
+          icon={Package} 
+          label="Apps" 
+          active={location === '/apps'}
+          onClick={() => setLocation('/apps')} 
+        />
         <NavItem icon={Globe} label="Published apps" onClick={() => console.log('Published apps clicked')} />
         
         <div className="py-2">
