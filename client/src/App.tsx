@@ -5,7 +5,6 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Sidebar from '@/components/Sidebar'
-import Header from '@/components/Header'
 import Home from "@/pages/Home";
 import Projects from "@/pages/Projects";
 import Apps from "@/pages/Apps";
@@ -71,7 +70,6 @@ function App() {
             onClearSearch={handleClearSearch}
           />
           <div className="flex-1 flex flex-col">
-            <Header />
             <main className="flex-1 overflow-hidden">
               <Router searchResults={searchResults} isSearching={isSearching} />
             </main>
