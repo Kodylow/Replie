@@ -12,7 +12,7 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { AgentManager } from '@/lib/agents';
 import type { AgentType, ChatMessage as AgentChatMessage } from '@/lib/agents/types';
-import type { FileContents } from '@/hooks/useFileManagement';
+import type { FileContents, AgentContext } from '@/hooks/useFileManagement';
 
 interface ChatMessage extends AgentChatMessage {
   agentType?: AgentType;
@@ -21,6 +21,7 @@ interface ChatMessage extends AgentChatMessage {
 interface AIChatPanelProps {
   fileContents: FileContents;
   updateFileContent?: (filename: string, content: string) => void;
+  saveFilesWithAgent?: (agentContext: AgentContext, actionDescription?: string) => Promise<any>;
   appId?: string;
 }
 
@@ -45,7 +46,7 @@ const agentColors: Record<AgentType, string> = {
 /**
  * AI Chat panel component for the editor with multi-agent support
  */
-export function AIChatPanel({ fileContents, updateFileContent, appId }: AIChatPanelProps) {
+export function AIChatPanel({ fileContents, updateFileContent, saveFilesWithAgent, appId }: AIChatPanelProps) {
   const { user } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const { toast } = useToast();
@@ -67,24 +68,56 @@ export function AIChatPanel({ fileContents, updateFileContent, appId }: AIChatPa
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
-  // Handle agent actions (file edits, etc.)
-  const handleAgentActions = async (actions: any[]) => {
+  // Handle agent actions (file edits, etc.) with enhanced attribution
+  const handleAgentActions = async (actions: any[], agentType: AgentType) => {
     if (!actions || actions.length === 0) return;
 
-    for (const action of actions) {
-      if (action.type === 'file_edit' && updateFileContent) {
-        updateFileContent(action.target, action.content);
+    // Convert FileContents to Record<string, string> for AgentManager
+    const fileContentsRecord: Record<string, string> = {};
+    Object.entries(fileContents).forEach(([filename, content]) => {
+      fileContentsRecord[filename] = content;
+    });
+
+    try {
+      // Use enhanced AgentManager executeActions with agent context
+      const result = await agentManager.executeActions(
+        actions,
+        fileContentsRecord,
+        agentType,
+        saveFilesWithAgent ? async (agentContext: AgentContext, actionDescription?: string) => {
+          if (saveFilesWithAgent) {
+            await saveFilesWithAgent(agentContext, actionDescription);
+          }
+        } : undefined
+      );
+
+      // Update local file contents
+      Object.entries(result.updatedFiles).forEach(([filename, content]) => {
+        if (updateFileContent && fileContents[filename] !== content) {
+          updateFileContent(filename, content);
+        }
+      });
+
+      // Show success notification with agent context
+      if (result.agentContext && result.shouldSave) {
         toast({
-          title: "File Updated",
-          description: `${action.target} has been modified by the agent.`
+          title: `${result.agentContext.agentName} Applied Changes`,
+          description: `${result.agentContext.actionDescription} - Files saved with agent attribution.`
         });
-      } else if (action.type === 'file_create' && updateFileContent) {
-        updateFileContent(action.target, action.content);
+      } else if (actions.length > 0) {
+        // Fallback for when no save was triggered but files were modified
         toast({
-          title: "File Created",
-          description: `${action.target} has been created by the agent.`
+          title: "Agent Actions Applied",
+          description: "File changes have been applied locally."
         });
       }
+    } catch (error) {
+      console.error('Error handling agent actions:', error);
+      toast({
+        title: "Error Applying Changes",
+        description: "Failed to apply agent changes. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -144,7 +177,7 @@ export function AIChatPanel({ fileContents, updateFileContent, appId }: AIChatPa
 
       // Handle any actions returned by the agent
       if (response.actions && response.actions.length > 0) {
-        await handleAgentActions(response.actions);
+        await handleAgentActions(response.actions, currentAgentProcessing || 'manager');
       }
 
       setIsTyping(false);

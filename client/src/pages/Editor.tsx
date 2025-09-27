@@ -37,6 +37,8 @@ export default function Editor() {
     loadFileContent,
     updateFileContent,
     saveFiles,
+    saveFilesWithAgent,
+    saveFilesWithAgentAsync,
     isSaving,
   } = useFileManagement(appId);
 
@@ -188,6 +190,7 @@ export default function Editor() {
             <AIChatPanel 
               fileContents={fileContents} 
               updateFileContent={updateFileContent}
+              saveFilesWithAgent={saveFilesWithAgentAsync}
               appId={appId}
             />
           </ResizablePanel>

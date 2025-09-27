@@ -8,6 +8,12 @@ export interface FileContents {
   [filename: string]: string;
 }
 
+export interface AgentContext {
+  agentType: 'manager' | 'shepherd' | 'advisor' | 'architect' | 'editor';
+  agentName: string;
+  actionDescription?: string;
+}
+
 interface FileLoadingState {
   [filename: string]: boolean;
 }
@@ -168,14 +174,26 @@ export function useFileManagement(appId: string | undefined) {
 
   // Enhanced save files mutation with retry logic
   const saveFilesMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (options?: { agentContext?: AgentContext; commitMessage?: string }) => {
       if (!appId) {
         throw new Error('No app selected. Please select an app to save files.');
       }
       
-      const response = await apiRequest('POST', `/api/apps/${appId}/save`, {
+      const payload: any = {
         files: fileContents
-      });
+      };
+      
+      // Add agent context if provided
+      if (options?.agentContext) {
+        payload.agentContext = options.agentContext;
+      }
+      
+      // Add custom commit message if provided
+      if (options?.commitMessage) {
+        payload.commitMessage = options.commitMessage;
+      }
+      
+      const response = await apiRequest('POST', `/api/apps/${appId}/save`, payload);
       return await response.json();
     },
     onSuccess: () => {
@@ -208,7 +226,7 @@ export function useFileManagement(appId: string | undefined) {
         return false;
       }
       
-      return isNetworkError(error) || (apiError.status && apiError.status >= 500);
+      return isNetworkError(error) || (apiError.status && apiError.status >= 500) ? true : false;
     },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 8000),
   });
@@ -217,7 +235,7 @@ export function useFileManagement(appId: string | undefined) {
   const autoSave = useCallback(async () => {
     if (hasUnsavedChanges && !saveFilesMutation.isPending) {
       try {
-        await saveFilesMutation.mutateAsync();
+        await saveFilesMutation.mutateAsync({});
       } catch (error) {
         // Auto-save errors are handled by the mutation
       }
@@ -236,6 +254,20 @@ export function useFileManagement(appId: string | undefined) {
     updateFileContent,
     saveFiles: saveFilesMutation.mutate,
     saveFilesAsync: saveFilesMutation.mutateAsync,
+    saveFilesWithAgent: (agentContext: AgentContext, actionDescription?: string) => {
+      const contextWithAction = {
+        ...agentContext,
+        actionDescription: actionDescription || agentContext.actionDescription
+      };
+      return saveFilesMutation.mutate({ agentContext: contextWithAction });
+    },
+    saveFilesWithAgentAsync: async (agentContext: AgentContext, actionDescription?: string) => {
+      const contextWithAction = {
+        ...agentContext,
+        actionDescription: actionDescription || agentContext.actionDescription
+      };
+      return saveFilesMutation.mutateAsync({ agentContext: contextWithAction });
+    },
     autoSave,
     isSaving: saveFilesMutation.isPending,
     saveError: saveFilesMutation.error,

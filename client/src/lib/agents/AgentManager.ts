@@ -160,24 +160,90 @@ export class AgentManager {
 
   /**
    * Execute agent actions (file edits, etc.)
+   * @param actions Array of actions to execute
+   * @param fileContents Current file contents
+   * @param agentType The type of agent executing the actions
+   * @param saveFiles Optional function to save files with agent context
+   * @returns Updated file contents and execution metadata
    */
   async executeActions(
     actions: any[],
-    fileContents: Record<string, string>
-  ): Promise<Record<string, string>> {
+    fileContents: Record<string, string>,
+    agentType?: AgentType,
+    saveFiles?: (agentContext: any, actionDescription?: string) => Promise<any>
+  ): Promise<{ 
+    updatedFiles: Record<string, string>; 
+    agentContext?: {
+      agentType: AgentType;
+      agentName: string;
+      actionDescription: string;
+    };
+    shouldSave: boolean;
+  }> {
     const updatedFiles = { ...fileContents };
+    const fileActions: string[] = [];
+    let shouldSave = false;
 
     for (const action of actions) {
       if (action.type === 'file_edit') {
         updatedFiles[action.target] = action.content;
+        fileActions.push(`Modified ${action.target}`);
+        shouldSave = true;
       } else if (action.type === 'file_create') {
         updatedFiles[action.target] = action.content;
+        fileActions.push(`Created ${action.target}`);
+        shouldSave = true;
       } else if (action.type === 'file_delete') {
         delete updatedFiles[action.target];
+        fileActions.push(`Deleted ${action.target}`);
+        shouldSave = true;
       }
     }
 
-    return updatedFiles;
+    let agentContext;
+    if (shouldSave && agentType) {
+      // Create agent context for attribution
+      const agentName = this.getAgentDisplayName(agentType);
+      const actionDescription = fileActions.length > 0 
+        ? fileActions.join(', ') 
+        : 'Applied file changes';
+
+      agentContext = {
+        agentType,
+        agentName,
+        actionDescription
+      };
+
+      // If saveFiles function is provided, save with agent context
+      if (saveFiles) {
+        try {
+          await saveFiles(agentContext, actionDescription);
+        } catch (error) {
+          console.error('Failed to save files with agent context:', error);
+          // Continue execution even if save fails
+        }
+      }
+    }
+
+    return {
+      updatedFiles,
+      agentContext,
+      shouldSave
+    };
+  }
+
+  /**
+   * Get display name for an agent type
+   */
+  private getAgentDisplayName(agentType: AgentType): string {
+    switch (agentType) {
+      case 'manager': return 'Manager Agent';
+      case 'editor': return 'Editor Agent';
+      case 'architect': return 'Architect Agent';
+      case 'advisor': return 'Advisor Agent';
+      case 'shepherd': return 'Shepherd Agent';
+      default: return 'Unknown Agent';
+    }
   }
 
   private addToHistory(message: ChatMessage) {
