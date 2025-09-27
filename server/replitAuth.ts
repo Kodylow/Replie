@@ -59,13 +59,15 @@ async function upsertUser(
 ) {
   const userId = claims["sub"];
   const firstName = claims["first_name"] || "User";
+  const lastName = claims["last_name"] || "";
+  const fullName = `${firstName} ${lastName}`.trim();
   
   // Create or update the user
   await storage.upsertUser({
     id: userId,
     email: claims["email"],
     firstName: firstName,
-    lastName: claims["last_name"],
+    lastName: lastName,
     profileImageUrl: claims["profile_image_url"],
   });
   
@@ -88,6 +90,9 @@ async function upsertUser(
       userId: userId,
       role: 'owner',
     });
+
+    // Create sample apps for the new user's personal workspace
+    await storage.createUserSampleData(personalWorkspace.id, fullName);
   }
 }
 

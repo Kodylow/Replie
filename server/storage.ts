@@ -64,6 +64,9 @@ export interface IStorage {
   // App file management methods
   initializeAppFiles(appId: string, objectStoragePath: string): Promise<boolean>;
   updateAppObjectStoragePath(appId: string, objectStoragePath: string): Promise<App | undefined>;
+  
+  // User sample data creation
+  createUserSampleData(workspaceId: string, userName: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -86,176 +89,10 @@ export class MemStorage implements IStorage {
     this.chatConversations = new Map();
     this.chatMessages = new Map();
     
-    // Initialize sample data
-    this.initializeSampleData();
+    // Initialize templates only
+    this.initializeTemplates();
   }
 
-  private async initializeSampleData() {
-    // Create a sample personal workspace
-    const personalWorkspace = await this.createWorkspace({
-      name: "Personal",
-      type: "personal",
-      slug: "personal",
-      description: "Your personal workspace"
-    });
-
-    // Create a sample team workspace
-    const teamWorkspace = await this.createWorkspace({
-      name: "Acme Corp",
-      type: "team", 
-      slug: "acme-corp",
-      description: "Acme Corporation team workspace"
-    });
-
-    // Sample projects for personal workspace
-    const personalProjects: InsertProject[] = [
-      {
-        workspaceId: personalWorkspace.id,
-        title: "CashflowRetro",
-        description: "Waiting for you",
-        category: "web",
-        isPrivate: "true",
-        backgroundColor: "bg-gradient-to-br from-orange-400 to-red-500",
-        deploymentStatus: "published"
-      },
-      {
-        workspaceId: personalWorkspace.id,
-        title: "StrikeAutoPilot",
-        description: "Automated trading system",
-        category: "data",
-        isPrivate: "true",
-        backgroundColor: "bg-gradient-to-br from-gray-700 to-gray-900",
-        deploymentStatus: "failed"
-      }
-    ];
-
-    // Sample projects for team workspace
-    const teamProjects: InsertProject[] = [
-      {
-        workspaceId: teamWorkspace.id,
-        title: "OmnicronPitch",
-        description: "Pitch deck generator",
-        category: "general",
-        isPrivate: "false",
-        backgroundColor: "bg-gradient-to-br from-blue-500 to-purple-600",
-        deploymentStatus: null
-      }
-    ];
-    
-    // Sample apps for personal workspace
-    const personalApps: InsertApp[] = [
-      {
-        workspaceId: personalWorkspace.id,
-        title: "CashflowRetro",
-        creator: "NickCo2",
-        isPublished: "true",
-        backgroundColor: "bg-gradient-to-br from-orange-400 to-red-500",
-        gitInitialized: "false"
-      },
-      {
-        workspaceId: personalWorkspace.id,
-        title: "EventScraper",
-        creator: "NickCo2",
-        isPublished: "false",
-        backgroundColor: "bg-gradient-to-br from-orange-400 to-red-500",
-        gitInitialized: "false"
-      },
-      {
-        workspaceId: personalWorkspace.id,
-        title: "VetConnect",
-        creator: "NickCo2",
-        isPublished: "false",
-        backgroundColor: "bg-gradient-to-br from-blue-500 to-purple-600",
-        gitInitialized: "false"
-      }
-    ];
-
-    // Sample apps for team workspace
-    const teamApps: InsertApp[] = [
-      {
-        workspaceId: teamWorkspace.id,
-        title: "ClearWaterOps",
-        creator: "TeamAcme",
-        isPublished: "true",
-        backgroundColor: "bg-gradient-to-br from-green-400 to-blue-500",
-        gitInitialized: "false"
-      },
-      {
-        workspaceId: teamWorkspace.id,
-        title: "ReplShowcase",
-        creator: "TeamAcme",
-        isPublished: "false",
-        backgroundColor: "bg-gradient-to-br from-purple-400 to-pink-500",
-        gitInitialized: "false"
-      }
-    ];
-    
-    // Create sample users
-    const sampleUsers = [
-      {
-        id: "user-1",
-        email: "alice@acme.com",
-        firstName: "Alice",
-        lastName: "Johnson",
-        profileImageUrl: null
-      },
-      {
-        id: "user-2", 
-        email: "bob@acme.com",
-        firstName: "Bob",
-        lastName: "Smith",
-        profileImageUrl: null
-      },
-      {
-        id: "user-3",
-        email: "charlie@acme.com",
-        firstName: "Charlie",
-        lastName: "Brown", 
-        profileImageUrl: null
-      }
-    ];
-
-    // Create users
-    for (const userData of sampleUsers) {
-      await this.upsertUser(userData);
-    }
-
-    // Create workspace members for team workspace
-    const teamMembers = [
-      {
-        workspaceId: teamWorkspace.id,
-        userId: "user-1",
-        role: "admin"
-      },
-      {
-        workspaceId: teamWorkspace.id,
-        userId: "user-2", 
-        role: "admin"
-      },
-      {
-        workspaceId: teamWorkspace.id,
-        userId: "user-3",
-        role: "member"
-      }
-    ];
-
-    // Add members to team workspace
-    for (const member of teamMembers) {
-      await this.addWorkspaceMember(member);
-    }
-    
-    // Create all projects and apps
-    for (const project of [...personalProjects, ...teamProjects]) {
-      await this.createProject(project);
-    }
-    
-    for (const app of [...personalApps, ...teamApps]) {
-      await this.createApp(app);
-    }
-    
-    // Create sample templates
-    await this.initializeTemplates();
-  }
 
   private async initializeTemplates() {
     // Essential template data covering different categories
@@ -856,6 +693,78 @@ export class MemStorage implements IStorage {
     };
     this.apps.set(appId, updatedApp);
     return updatedApp;
+  }
+
+  // Create user-specific sample data when they first get a personal workspace
+  async createUserSampleData(workspaceId: string, userName: string): Promise<void> {
+    const backgroundColors = [
+      'bg-gradient-to-br from-orange-400 to-red-500',
+      'bg-gradient-to-br from-gray-700 to-gray-900',
+      'bg-gradient-to-br from-blue-500 to-purple-600',
+      'bg-gradient-to-br from-green-400 to-blue-500',
+      'bg-gradient-to-br from-purple-400 to-pink-500',
+      'bg-gradient-to-br from-yellow-400 to-orange-500',
+    ];
+
+    // Sample projects for the user's personal workspace
+    const sampleProjects: InsertProject[] = [
+      {
+        workspaceId: workspaceId,
+        title: "My First Project",
+        description: "A starter project to get you going",
+        category: "web",
+        isPrivate: "true",
+        backgroundColor: backgroundColors[0],
+        deploymentStatus: "published"
+      },
+      {
+        workspaceId: workspaceId,
+        title: "Data Analysis Tool",
+        description: "Analyze and visualize your data",
+        category: "data",
+        isPrivate: "true",
+        backgroundColor: backgroundColors[1],
+        deploymentStatus: null
+      }
+    ];
+
+    // Sample apps for the user's personal workspace
+    const sampleApps: InsertApp[] = [
+      {
+        workspaceId: workspaceId,
+        title: "My First App",
+        creator: userName,
+        isPublished: "true",
+        backgroundColor: backgroundColors[0],
+        gitInitialized: "false"
+      },
+      {
+        workspaceId: workspaceId,
+        title: "Todo Manager",
+        creator: userName,
+        isPublished: "false",
+        backgroundColor: backgroundColors[2],
+        gitInitialized: "false"
+      },
+      {
+        workspaceId: workspaceId,
+        title: "Portfolio Site",
+        creator: userName,
+        isPublished: "false",
+        backgroundColor: backgroundColors[4],
+        gitInitialized: "false"
+      }
+    ];
+    
+    // Create sample projects
+    for (const project of sampleProjects) {
+      await this.createProject(project);
+    }
+    
+    // Create sample apps
+    for (const app of sampleApps) {
+      await this.createApp(app);
+    }
   }
 }
 

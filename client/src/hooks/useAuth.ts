@@ -88,7 +88,7 @@ export function useAuth(): UseAuthResult {
   };
 
   return {
-    user,
+    user: user || null,
     isLoading,
     isAuthenticated: !!user,
     error,

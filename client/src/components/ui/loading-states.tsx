@@ -55,13 +55,13 @@ interface TableLoadingProps {
 
 export function TableLoading({ columns, rows = 5 }: TableLoadingProps) {
   return (
-    <div className="space-y-2">
-      {Array.from({ length: rows }).map((_, index) => (
-        <div key={index} className="border rounded-lg">
-          <TableRowSkeleton columns={columns} />
-        </div>
-      ))}
-    </div>
+    <table className="w-full">
+      <tbody>
+        {Array.from({ length: rows }).map((_, index) => (
+          <TableRowSkeleton key={index} columns={columns} />
+        ))}
+      </tbody>
+    </table>
   );
 }
 
