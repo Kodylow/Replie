@@ -42,7 +42,7 @@ export function ProjectCreationForm({ onProjectCreated }: ProjectCreationFormPro
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Project Idea Input */}
-      <div className="relative border border-border rounded-lg bg-background">
+      <div className="relative border border-border rounded-lg bg-background focus-within:border-primary">
         <Textarea
           placeholder="Describe the idea you want to build..."
           value={projectIdea}
@@ -97,7 +97,7 @@ export function ProjectCreationForm({ onProjectCreated }: ProjectCreationFormPro
                   Creating...
                 </>
               ) : (
-                'Start coding'
+                'Start chat'
               )}
             </Button>
             
