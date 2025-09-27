@@ -986,7 +986,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const { bucketName } = parseObjectPath(app.objectStoragePath);
       const bucket = objectStorageClient.bucket(bucketName);
       
-      // Save each file
+      // Save each file to object storage
       const savePromises = Object.entries(validatedData.files).map(async ([filename, content]) => {
         const allowedFiles = ['index.html', 'styles.css', 'script.js', 'db.json'];
         if (!allowedFiles.includes(filename)) {
@@ -1002,7 +1002,82 @@ document.addEventListener('DOMContentLoaded', function() {
       
       await Promise.all(savePromises);
       
-      res.json({ message: "All files saved successfully" });
+      // Prepare response object
+      let response: any = { 
+        message: "All files saved successfully",
+        gitCommitStatus: "skipped" // Default status
+      };
+      
+      // Only attempt Git operations if Git is initialized for this app
+      if (app.gitInitialized === 'true' && app.objectStoragePath) {
+        try {
+          // Determine author information and commit message based on request context
+          let author: { name: string; email: string };
+          let commitMessage: string;
+          
+          if (validatedData.agentContext) {
+            // Agent-driven changes
+            const agentType = validatedData.agentContext.agentType;
+            const agentName = validatedData.agentContext.agentName;
+            const actionDescription = validatedData.agentContext.actionDescription;
+            
+            author = {
+              name: `${agentName} (${agentType})`,
+              email: `${agentType}@replie.system`
+            };
+            
+            // Generate descriptive commit message for agent changes
+            const fileList = Object.keys(validatedData.files).join(', ');
+            commitMessage = `Agent: ${agentType} - ${actionDescription || 'Modified files'}`;
+            commitMessage += `\n\nFiles changed: ${fileList}`;
+          } else {
+            // User-driven changes
+            const userClaims = req.user.claims;
+            author = {
+              name: `${userClaims.first_name || 'User'} ${userClaims.last_name || ''}`.trim(),
+              email: userClaims.email || 'user@replie.system'
+            };
+            
+            // Use custom commit message or generate a default one
+            if (validatedData.commitMessage) {
+              commitMessage = validatedData.commitMessage;
+            } else {
+              const fileList = Object.keys(validatedData.files).join(', ');
+              commitMessage = `User: Manual file updates\n\nFiles changed: ${fileList}`;
+            }
+          }
+          
+          // Create Git commit using GitService
+          const commitSha = await gitService.commitChanges(
+            appId,
+            app.objectStoragePath,
+            validatedData.files,
+            author,
+            commitMessage
+          );
+          
+          // Update app record with new Git metadata
+          await storage.updateApp(appId, {
+            lastCommitSha: commitSha,
+            lastCommitMessage: commitMessage,
+            lastCommitAuthor: `${author.name} <${author.email}>`,
+            lastCommitDate: new Date()
+          });
+          
+          response.gitCommitStatus = "success";
+          response.commitSha = commitSha;
+          response.commitMessage = commitMessage;
+          response.commitAuthor = `${author.name} <${author.email}>`;
+          
+        } catch (gitError) {
+          // Log Git error but don't fail the file save operation
+          console.error(`Git commit failed for app ${appId}:`, gitError);
+          response.gitCommitStatus = "failed";
+          response.gitError = gitError instanceof Error ? gitError.message : 'Unknown Git error';
+        }
+      }
+      
+      res.json(response);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ 

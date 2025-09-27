@@ -290,6 +290,12 @@ export const appFileSaveSchema = z.object({
 
 export const appFilesSaveSchema = z.object({
   files: z.record(z.string(), z.string()), // filename -> content mapping
+  agentContext: z.object({
+    agentType: z.enum(['manager', 'shepherd', 'advisor', 'architect', 'editor']),
+    agentName: z.string(),
+    actionDescription: z.string().optional(),
+  }).optional(), // Present if changes are made by an agent
+  commitMessage: z.string().optional(), // Custom commit message from user
 });
 
 export type AppFileContentRequest = z.infer<typeof appFileContentSchema>;

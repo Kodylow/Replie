@@ -51,7 +51,7 @@ function ActionButton({ icon: Icon, label, onClick }: NavItemProps) {
       variant="outline"
       size="sm"
       onClick={onClick}
-      className="w-full justify-start h-8 text-sm font-medium gap-2"
+      className="w-full justify-center h-8 text-sm font-medium gap-2 text-center"
       data-testid={`action-${label.toLowerCase().replace(/\s+/g, '-')}`}
     >
       <Icon className="w-4 h-4" />
@@ -238,7 +238,7 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
         <ActionButton icon={Upload} label="Import code or design" onClick={() => setLocation('/import')} />
       </div>
 
-      <Separator className="mx-4 bg-sidebar-border" />
+      <Separator className="mx-4 bg-sidebar-border w-auto" />
 
       {/* Navigation */}
       <div className="flex-1 px-4 py-4 space-y-1">
