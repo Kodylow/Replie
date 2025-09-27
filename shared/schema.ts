@@ -21,6 +21,16 @@ export const projects = pgTable("projects", {
   updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
 });
 
+export const apps = pgTable("apps", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  creator: text("creator").notNull(),
+  isPublished: text("is_published").notNull().default('false'), // 'true' or 'false' as text
+  backgroundColor: text("background_color").notNull().default('bg-gradient-to-br from-blue-500 to-purple-600'),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -32,7 +42,15 @@ export const insertProjectSchema = createInsertSchema(projects).omit({
   updatedAt: true,
 });
 
+export const insertAppSchema = createInsertSchema(apps).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertProject = z.infer<typeof insertProjectSchema>;
 export type Project = typeof projects.$inferSelect;
+export type InsertApp = z.infer<typeof insertAppSchema>;
+export type App = typeof apps.$inferSelect;
