@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -89,6 +89,7 @@ function App() {
 function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
   const isMobile = useIsMobile();
+  const [location] = useLocation();
   const [searchResults, setSearchResults] = useState<Project[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [mobileActiveTab, setMobileActiveTab] = useState<'apps' | 'create' | 'account'>('create')
@@ -109,6 +110,17 @@ function AppContent() {
 
   // Mobile Layout
   if (isMobile) {
+    // Check if we're on a special page that should use the full router
+    if (location === '/planning' || location.startsWith('/editor/') || location.startsWith('/project/')) {
+      return (
+        <div className="h-screen flex flex-col bg-background">
+          <div className="flex-1 overflow-hidden">
+            <Router searchResults={searchResults} isSearching={isSearching} />
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="h-screen flex flex-col bg-background">
         <MobileHeader />
