@@ -2,11 +2,22 @@ import { useState, useEffect } from 'react'
 import { ArrowRight, Globe, Database, Gamepad2, Layers, Bot } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
 import { useToast } from '@/hooks/use-toast'
 import CategoryButton from './CategoryButton'
 import ProjectCard from './ProjectCard'
+import ProjectEditDialog from './ProjectEditDialog'
 import type { Project, InsertProject } from '@shared/schema'
 
 const categories = [
@@ -48,6 +59,8 @@ function formatTimeAgo(date: Date): string {
 export default function MainContent() {
   const [projectIdea, setProjectIdea] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('web')
+  const [editingProject, setEditingProject] = useState<Project | null>(null)
+  const [deletingProject, setDeletingProject] = useState<Project | null>(null)
   const { toast } = useToast()
 
   // Fetch projects
@@ -80,6 +93,60 @@ export default function MainContent() {
       toast({
         title: 'Error',
         description: 'Failed to create project. Please try again.',
+        variant: 'destructive'
+      })
+    }
+  })
+
+  // Update project mutation
+  const updateProjectMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<InsertProject> }) => {
+      const response = await fetch(`/api/projects/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+      if (!response.ok) throw new Error('Failed to update project')
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/projects'] })
+      toast({
+        title: 'Project updated!',
+        description: 'Your project has been updated successfully.'
+      })
+    },
+    onError: (error) => {
+      console.error('Error updating project:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to update project. Please try again.',
+        variant: 'destructive'
+      })
+    }
+  })
+
+  // Delete project mutation
+  const deleteProjectMutation = useMutation({
+    mutationFn: async (projectId: string) => {
+      const response = await fetch(`/api/projects/${projectId}`, {
+        method: 'DELETE'
+      })
+      if (!response.ok) throw new Error('Failed to delete project')
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/projects'] })
+      setDeletingProject(null)
+      toast({
+        title: 'Project deleted!',
+        description: 'Your project has been deleted successfully.'
+      })
+    },
+    onError: (error) => {
+      console.error('Error deleting project:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to delete project. Please try again.',
         variant: 'destructive'
       })
     }
@@ -197,6 +264,8 @@ export default function MainContent() {
                     isPrivate={project.isPrivate === 'true'}
                     backgroundColor={project.backgroundColor}
                     onClick={() => console.log(`Opening project: ${project.title}`)}
+                    onEdit={() => setEditingProject(project)}
+                    onDelete={() => setDeletingProject(project)}
                   />
                 ))
               )}
@@ -204,6 +273,41 @@ export default function MainContent() {
           )}
         </div>
       </div>
+      
+      {/* Edit Project Dialog */}
+      <ProjectEditDialog
+        project={editingProject}
+        open={!!editingProject}
+        onOpenChange={(open) => !open && setEditingProject(null)}
+        onSave={async (projectId, data) => {
+          await updateProjectMutation.mutateAsync({ id: projectId, data })
+          setEditingProject(null)
+        }}
+        isLoading={updateProjectMutation.isPending}
+      />
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingProject} onOpenChange={(open) => !open && setDeletingProject(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Project</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deletingProject?.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-delete-cancel">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingProject && deleteProjectMutation.mutate(deletingProject.id)}
+              disabled={deleteProjectMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-delete-confirm"
+            >
+              {deleteProjectMutation.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -1,7 +1,13 @@
-import { MoreVertical, Lock } from 'lucide-react'
+import { MoreVertical, Lock, Edit, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 interface ProjectCardProps {
   title: string
@@ -11,6 +17,8 @@ interface ProjectCardProps {
   thumbnail?: string
   backgroundColor?: string
   onClick?: () => void
+  onEdit?: () => void
+  onDelete?: () => void
 }
 
 export default function ProjectCard({ 
@@ -20,7 +28,9 @@ export default function ProjectCard({
   isPrivate = false, 
   thumbnail,
   backgroundColor = 'bg-muted',
-  onClick 
+  onClick,
+  onEdit,
+  onDelete
 }: ProjectCardProps) {
   return (
     <Card className="group hover-elevate cursor-pointer" onClick={onClick} data-testid={`card-project-${title.toLowerCase().replace(/\s+/g, '-')}`}>
@@ -37,18 +47,46 @@ export default function ProjectCard({
           
           {/* Actions */}
           <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="h-6 w-6 bg-background/80 hover:bg-background"
-              onClick={(e) => {
-                e.stopPropagation()
-                console.log(`More actions for ${title}`)
-              }}
-              data-testid={`button-more-${title.toLowerCase().replace(/\s+/g, '-')}`}
-            >
-              <MoreVertical className="w-3 h-3" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="h-6 w-6 bg-background/80 hover:bg-background"
+                  onClick={(e) => e.stopPropagation()}
+                  data-testid={`button-more-${title.toLowerCase().replace(/\s+/g, '-')}`}
+                >
+                  <MoreVertical className="w-3 h-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {onEdit && (
+                  <DropdownMenuItem 
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onEdit()
+                    }}
+                    data-testid={`menu-edit-${title.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
+                {onDelete && (
+                  <DropdownMenuItem 
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onDelete()
+                    }}
+                    className="text-destructive focus:text-destructive"
+                    data-testid={`menu-delete-${title.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           
           {/* Description overlay */}
