@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLocation } from 'wouter'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { Search, Plus, MoreHorizontal, ExternalLink, Settings, Trash2, Download, AlertTriangle, RefreshCw } from 'lucide-react'
+import { Search, Plus, MoreHorizontal, ExternalLink, Settings, Trash2, Download, AlertTriangle, RefreshCw, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -33,7 +33,7 @@ import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { QueryErrorBoundary } from '@/components/ui/query-error-boundary'
 import { LoadingWrapper, TableLoading, EmptyState } from '@/components/ui/loading-states'
 import { ButtonLoading } from '@/components/ui/loading-spinner'
-import type { App, InsertApp } from '@shared/schema'
+import type { App, InsertApp, WorkspaceMemberWithUser } from '@shared/schema'
 
 const appIcons = [
   'E', 'V', 'C', 'R', 'S', 'O', 'P', 'T', 'M', 'B', 'L', 'A', 'N', 'H', 'K', 'D'
@@ -91,6 +91,8 @@ function AppsContent({ searchResults = [], isSearching }: AppsProps) {
   const [, setLocation] = useLocation()
   const [searchQuery, setSearchQuery] = useState('')
   const [filterMode, setFilterMode] = useState<'all' | 'creator' | 'me' | 'published'>('all')
+  const [selectedCreator, setSelectedCreator] = useState<string>('all') // 'all', 'me', or specific creator name
+  const [creatorDropdownOpen, setCreatorDropdownOpen] = useState(false)
   const [editingApp, setEditingApp] = useState<App | null>(null)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deletingApp, setDeletingApp] = useState<App | null>(null)
@@ -102,6 +104,49 @@ function AppsContent({ searchResults = [], isSearching }: AppsProps) {
   const { user } = useAuth()
   const { handleAuthError } = useAuthError()
   const { workspaces, currentWorkspace } = useWorkspace()
+
+  // Fetch workspace members for team workspaces (for creator filtering)
+  const { data: workspaceMembers = [] } = useQuery<WorkspaceMemberWithUser[]>({
+    queryKey: ['/api/workspaces', currentWorkspace?.id, 'members'],
+    queryFn: getQueryFn({ on401: "throw" }),
+    enabled: !!currentWorkspace?.id && currentWorkspace.type === 'team',
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+  })
+
+  // Get list of unique creators from workspace members
+  const availableCreators = workspaceMembers.map(member => {
+    const user = member.user
+    return {
+      id: user.id,
+      name: user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.email || 'Unknown User',
+      email: user.email,
+      avatar: user.profileImageUrl
+    }
+  })
+
+  // Helper function to check if current user created an app using stable user ID comparison
+  const isCreatedByCurrentUser = (app: App) => {
+    if (!user) return false
+    
+    // Primary method: Use stable user ID comparison if available
+    if (app.creatorUserId) {
+      return app.creatorUserId === user.id
+    }
+    
+    // Defensive fallback for legacy data without creatorUserId
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('App missing creatorUserId, falling back to string matching:', app.title)
+    }
+    
+    // Simple fallback: basic string comparison (for legacy compatibility only)
+    const currentUserName = user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.email || 'Unknown User'
+    const normalizedAppCreator = app.creator.trim().toLowerCase()
+    const normalizedCurrentUser = currentUserName.toLowerCase()
+    
+    return normalizedAppCreator === normalizedCurrentUser || 
+           (user.email && normalizedAppCreator === user.email.toLowerCase())
+  }
 
   // Fetch all apps for current workspace with enhanced error handling
   const { 
@@ -124,7 +169,7 @@ function AppsContent({ searchResults = [], isSearching }: AppsProps) {
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
   })
 
-  // Filter apps locally (ignore shared search for now since it's project-focused)
+  // Filter apps locally with robust ID-based creator filtering
   const filteredApps = apps.filter(app => {
     const matchesSearch = app.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       app.creator.toLowerCase().includes(searchQuery.toLowerCase())
@@ -133,8 +178,24 @@ function AppsContent({ searchResults = [], isSearching }: AppsProps) {
       switch (filterMode) {
         case 'published':
           return app.isPublished === 'true'
-        case 'creator':
         case 'me':
+          // Use robust ID-based matching
+          return user ? isCreatedByCurrentUser(app) : false
+        case 'creator':
+          // Handle specific creator selection
+          if (selectedCreator === 'all') {
+            return true
+          } else if (selectedCreator === 'me') {
+            return user ? isCreatedByCurrentUser(app) : false
+          } else {
+            // Match specific creator by user ID from availableCreators
+            const selectedCreatorObj = availableCreators.find(creator => creator.name === selectedCreator)
+            if (selectedCreatorObj && app.creatorUserId) {
+              return app.creatorUserId === selectedCreatorObj.id
+            }
+            // Fallback to string matching for legacy data
+            return app.creator.trim().toLowerCase() === selectedCreator.toLowerCase()
+          }
         case 'all':
         default:
           return true
@@ -346,7 +407,7 @@ function AppsContent({ searchResults = [], isSearching }: AppsProps) {
     if (newAppTitle.trim() && newAppWorkspaceId && user) {
       const appData: InsertApp = {
         title: newAppTitle.trim(),
-        creator: user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.email || 'Unknown User',
+        creator: getCurrentUserCreatorString(),
         workspaceId: newAppWorkspaceId,
         isPublished: 'false',
         isPrivate: newAppVisibility === 'private' ? 'true' : 'false',
@@ -442,25 +503,90 @@ function AppsContent({ searchResults = [], isSearching }: AppsProps) {
               <Download className="w-4 h-4 mr-2" />
               Download CSV
             </Button>
+            {/* Enhanced filter controls */}
             <div className="flex items-center gap-1">
-              <Button 
-                variant={filterMode === 'creator' ? 'default' : 'ghost'} 
-                size="sm"
-                onClick={() => setFilterMode('creator')}
-              >
-                Creator
-              </Button>
-              <Button 
-                variant={filterMode === 'me' ? 'default' : 'ghost'} 
-                size="sm"
-                onClick={() => setFilterMode('me')}
-              >
-                Created by me
-              </Button>
+              {/* Creator filter with dropdown for team workspaces */}
+              {currentWorkspace?.type === 'team' ? (
+                <DropdownMenu open={creatorDropdownOpen} onOpenChange={setCreatorDropdownOpen}>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant={filterMode === 'creator' ? 'default' : 'ghost'} 
+                      size="sm"
+                      data-testid="button-filter-creator"
+                    >
+                      Creator
+                      <ChevronDown className="w-3 h-3 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-48">
+                    <DropdownMenuItem 
+                      onClick={() => {
+                        setFilterMode('all')
+                        setSelectedCreator('all')
+                        setCreatorDropdownOpen(false)
+                      }}
+                      data-testid="filter-creator-all"
+                    >
+                      All creators
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => {
+                        setFilterMode('creator')
+                        setSelectedCreator('me')
+                        setCreatorDropdownOpen(false)
+                      }}
+                      data-testid="filter-creator-me"
+                      disabled={!user} // Guard against null user
+                    >
+                      Created by me
+                    </DropdownMenuItem>
+                    {availableCreators.length > 0 && (
+                      <>
+                        <div className="h-px bg-border my-1" />
+                        {availableCreators.map((creator) => (
+                          <DropdownMenuItem 
+                            key={creator.id}
+                            onClick={() => {
+                              setFilterMode('creator')
+                              setSelectedCreator(creator.name)
+                              setCreatorDropdownOpen(false)
+                            }}
+                            data-testid={`filter-creator-${creator.id}`}
+                            className="flex items-center gap-2"
+                          >
+                            <Avatar className="w-5 h-5">
+                              <AvatarFallback className="bg-muted text-muted-foreground text-xs">
+                                {getCreatorInitials(creator.name)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="truncate">{creator.name}</span>
+                          </DropdownMenuItem>
+                        ))}
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                // Simple creator filter for personal workspaces
+                <Button 
+                  variant={filterMode === 'me' ? 'default' : 'ghost'} 
+                  size="sm"
+                  onClick={() => setFilterMode('me')}
+                  data-testid="button-filter-created-by-me"
+                  disabled={!user} // Guard against null user
+                >
+                  Created by me
+                </Button>
+              )}
+              
               <Button 
                 variant={filterMode === 'all' ? 'default' : 'ghost'} 
                 size="sm"
-                onClick={() => setFilterMode('all')}
+                onClick={() => {
+                  setFilterMode('all')
+                  setSelectedCreator('all')
+                }}
+                data-testid="button-filter-all"
               >
                 All
               </Button>
@@ -468,6 +594,7 @@ function AppsContent({ searchResults = [], isSearching }: AppsProps) {
                 variant={filterMode === 'published' ? 'default' : 'ghost'} 
                 size="sm"
                 onClick={() => setFilterMode('published')}
+                data-testid="button-filter-published"
               >
                 <div className="w-2 h-2 rounded-full bg-green-500 mr-2"></div>
                 Published

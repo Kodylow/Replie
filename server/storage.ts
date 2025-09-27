@@ -66,7 +66,7 @@ export interface IStorage {
   updateAppObjectStoragePath(appId: string, objectStoragePath: string): Promise<App | undefined>;
   
   // User sample data creation
-  createUserSampleData(workspaceId: string, userName: string): Promise<void>;
+  createUserSampleData(workspaceId: string, userName: string, userId: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -696,7 +696,7 @@ export class MemStorage implements IStorage {
   }
 
   // Create user-specific sample data when they first get a personal workspace
-  async createUserSampleData(workspaceId: string, userName: string): Promise<void> {
+  async createUserSampleData(workspaceId: string, userName: string, userId: string): Promise<void> {
     const backgroundColors = [
       'bg-gradient-to-br from-orange-400 to-red-500',
       'bg-gradient-to-br from-gray-700 to-gray-900',
@@ -734,6 +734,7 @@ export class MemStorage implements IStorage {
         workspaceId: workspaceId,
         title: "My First App",
         creator: userName,
+        creatorUserId: userId,
         isPublished: "true",
         backgroundColor: backgroundColors[0],
         gitInitialized: "false"
@@ -742,6 +743,7 @@ export class MemStorage implements IStorage {
         workspaceId: workspaceId,
         title: "Todo Manager",
         creator: userName,
+        creatorUserId: userId,
         isPublished: "false",
         backgroundColor: backgroundColors[2],
         gitInitialized: "false"
@@ -750,6 +752,7 @@ export class MemStorage implements IStorage {
         workspaceId: workspaceId,
         title: "Portfolio Site",
         creator: userName,
+        creatorUserId: userId,
         isPublished: "false",
         backgroundColor: backgroundColors[4],
         gitInitialized: "false"

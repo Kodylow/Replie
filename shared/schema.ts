@@ -68,6 +68,7 @@ export const apps = pgTable("apps", {
   workspaceId: varchar("workspace_id").notNull(),
   title: text("title").notNull(),
   creator: text("creator").notNull(),
+  creatorUserId: varchar("creator_user_id"), // User ID for reliable creator filtering (nullable for backward compatibility)
   isPublished: text("is_published").notNull().default('false'), // 'true' or 'false' as text
   isPrivate: text("is_private").notNull().default('true'), // 'true' or 'false' as text
   backgroundColor: text("background_color").notNull().default('bg-gradient-to-br from-blue-500 to-purple-600'),

@@ -92,7 +92,7 @@ async function upsertUser(
     });
 
     // Create sample apps for the new user's personal workspace
-    await storage.createUserSampleData(personalWorkspace.id, fullName);
+    await storage.createUserSampleData(personalWorkspace.id, fullName, userId);
   }
 }
 

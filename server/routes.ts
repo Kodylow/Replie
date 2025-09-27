@@ -511,9 +511,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Access denied to workspace" });
       }
       
+      // Get user info for creator display name
+      const user = await storage.getUser(userId);
+      const creatorName = user ? (user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.email || 'Unknown User') : 'Unknown User';
+      
       const validatedData = insertAppSchema.parse({
         ...req.body,
-        workspaceId
+        workspaceId,
+        creator: creatorName,
+        creatorUserId: userId
       });
       const app = await storage.createApp(validatedData);
       res.status(201).json(app);
