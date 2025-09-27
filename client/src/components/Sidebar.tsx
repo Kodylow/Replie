@@ -22,6 +22,7 @@ function NavItem({ icon: Icon, label, active = false, onClick }: NavItemProps) {
         active ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground'
       }`}
       data-testid={`nav-${label.toLowerCase().replace(/\s+/g, '-')}`}
+      aria-current={active ? 'page' : undefined}
     >
       <Icon className="w-4 h-4 mr-3" />
       {label}
