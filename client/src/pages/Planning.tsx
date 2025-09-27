@@ -35,33 +35,17 @@ export default function Planning() {
 
   // Extract project idea from URL parameters
   useEffect(() => {
-    const urlParams = new URLSearchParams(location.split('?')[1] || '');
+    const urlParams = new URLSearchParams(window.location.search);
     const ideaParam = urlParams.get('idea');
-    if (ideaParam && !hasStartedChat) {
+    if (ideaParam) {
       const decodedIdea = decodeURIComponent(ideaParam);
       setUserMessage(decodedIdea);
       setHasStartedChat(true);
+      // Show planning response and cards immediately
+      setReplieResponse(generatePlanningResponse());
+      setShowModeSelection(true);
     }
   }, [location]);
-
-  // Auto-start the chat when message is set and workspace is ready
-  useEffect(() => {
-    if (userMessage && hasStartedChat && !conversationId && !isTyping && !replieResponse && currentWorkspace?.id) {
-      console.log('Auto-starting chat with:', userMessage);
-      chatMutation.mutate(userMessage);
-      
-      // Fallback timeout - show fallback response if nothing happens in 10 seconds
-      const timeoutId = setTimeout(() => {
-        if (!replieResponse && !isTyping) {
-          console.log('Timeout reached, showing fallback response');
-          setReplieResponse(generatePlanningResponse());
-          setShowModeSelection(true);
-        }
-      }, 10000);
-      
-      return () => clearTimeout(timeoutId);
-    }
-  }, [userMessage, hasStartedChat, conversationId, isTyping, replieResponse, currentWorkspace?.id]);
 
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
@@ -152,31 +136,10 @@ I'll include the following features:
           </Button>
           <span className="text-lg font-medium">HelloWorld (B)</span>
         </div>
-        <div className="flex items-center gap-2">
-          <Tabs value="plan" className="w-auto">
-            <TabsList className="bg-gray-100">
-              <TabsTrigger value="plan" className="bg-green-500 text-white px-4" data-testid="tab-plan">
-                Plan
-              </TabsTrigger>
-              <TabsTrigger value="build" className="px-4" data-testid="tab-build">
-                Build
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
       </div>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col items-center px-6 py-8">
-        {/* Initial state - just the suggestion */}
-        {!hasStartedChat && (
-          <div className="flex justify-end w-full max-w-2xl mb-4">
-            <div className="bg-blue-500 text-white px-4 py-2 rounded-lg max-w-xs">
-              build me a hello world
-              <div className="text-xs text-blue-100 mt-1">Just now</div>
-            </div>
-          </div>
-        )}
 
         {/* After chat started - show user message */}
         {userMessage && (
