@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from 'wouter'
-import { ArrowRight, Globe, Database, Gamepad2, Layers, Bot, ChevronDown, Paperclip, Link } from 'lucide-react'
+import { ArrowRight, Globe, Database, Gamepad2, Layers, Bot, ChevronDown, Paperclip, Link, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -14,6 +14,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
 import { useToast } from '@/hooks/use-toast'
@@ -72,7 +79,7 @@ export default function MainContent({ searchResults, isSearching = false }: Main
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [deletingProject, setDeletingProject] = useState<Project | null>(null)
   const { toast } = useToast()
-  const { currentWorkspace, isLoading: workspaceLoading } = useWorkspace()
+  const { currentWorkspace, workspaces, setCurrentWorkspace, isLoading: workspaceLoading } = useWorkspace()
   const { user } = useAuth()
 
   // Fetch projects from current workspace
@@ -213,19 +220,53 @@ export default function MainContent({ searchResults, isSearching = false }: Main
       <div className="max-w-4xl mx-auto px-6 py-16 md:py-24">
         {/* Workspace Dropdown */}
         <div className="flex justify-center mb-8">
-          <Button 
-            variant="ghost" 
-            className="flex items-center gap-2 text-sm font-medium"
-            data-testid="button-workspace-dropdown"
-          >
-            <div className="w-6 h-6 bg-primary rounded-sm flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xs">
-                {currentWorkspace?.name.charAt(0).toUpperCase() || 'R'}
-              </span>
-            </div>
-            {currentWorkspace?.name || 'Loading workspace...'}
-            <ChevronDown className="w-4 h-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                className="flex items-center gap-2 text-sm font-medium"
+                data-testid="button-workspace-dropdown"
+              >
+                <div className="w-6 h-6 bg-primary rounded-sm flex items-center justify-center">
+                  <span className="text-primary-foreground font-bold text-xs">
+                    {currentWorkspace?.name.charAt(0).toUpperCase() || 'R'}
+                  </span>
+                </div>
+                {currentWorkspace?.name || 'Loading workspace...'}
+                <ChevronDown className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center">
+              {workspaces.map((workspace) => (
+                <DropdownMenuItem
+                  key={workspace.id}
+                  onClick={() => setCurrentWorkspace(workspace)}
+                  className={workspace.id === currentWorkspace?.id ? 'bg-accent' : ''}
+                  data-testid={`workspace-${workspace.slug}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-primary rounded-sm flex items-center justify-center">
+                      <span className="text-primary-foreground font-bold text-xs">
+                        {workspace.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    {workspace.name}
+                    <span className="text-muted-foreground text-xs ml-auto">({workspace.type})</span>
+                  </div>
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => console.log('Create Team clicked')}
+                data-testid="button-create-team"
+              >
+                <div className="flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  Create Team
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Greeting */}
