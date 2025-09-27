@@ -125,3 +125,15 @@ export interface WorkspaceMemberWithUser {
     profileImageUrl: string | null;
   };
 }
+
+// Team creation request schema
+export const createTeamSchema = z.object({
+  organizationName: z.string().min(1, "Organization name is required"),
+  useCase: z.string().min(1, "Use case is required"),
+  description: z.string().optional(),
+  billingEmail: z.string().email("Valid billing email is required"),
+  inviteEmails: z.string().optional(),
+  plan: z.enum(["teams", "enterprise"]),
+});
+
+export type CreateTeamRequest = z.infer<typeof createTeamSchema>;

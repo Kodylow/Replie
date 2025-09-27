@@ -26,7 +26,6 @@ import { queryClient } from '@/lib/queryClient'
 import { useToast } from '@/hooks/use-toast'
 import { useWorkspace } from '@/contexts/WorkspaceContext'
 import { useAuth } from '@/hooks/useAuth'
-import CategoryButton from './CategoryButton'
 import ProjectCard from './ProjectCard'
 import ProjectEditDialog from './ProjectEditDialog'
 import type { Project, InsertProject } from '@shared/schema'
@@ -285,6 +284,32 @@ export default function MainContent({ searchResults, isSearching = false }: Main
                 className="min-h-[100px] resize-none border-0 bg-transparent text-base focus-visible:ring-0 p-4"
                 data-testid="input-project-idea"
               />
+              {/* App Type (horizontal scroll) */}
+              <div className="border-t border-border px-3 py-2 overflow-x-auto whitespace-nowrap">
+                <div className="flex items-center gap-2">
+                  {categories.map((category) => (
+                    <button
+                      key={category.id}
+                      type="button"
+                      onClick={() => setSelectedCategory(category.id)}
+                      className={`flex items-center gap-2 px-3 h-8 rounded-full text-xs shrink-0 transition-colors ${
+                        selectedCategory === category.id
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground'
+                      }`}
+                      aria-pressed={selectedCategory === category.id}
+                    >
+                      {category.icon}
+                      <span className="truncate">{category.label}</span>
+                      {category.badge && (
+                        <span className="ml-1 rounded-sm bg-primary-foreground/10 px-1.5 py-0.5 text-[10px] leading-none">
+                          {category.badge}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
               
               {/* Bottom Controls */}
               <div className="flex items-center justify-between p-3 border-t border-border">
@@ -334,30 +359,7 @@ export default function MainContent({ searchResults, isSearching = false }: Main
             </div>
           </div>
           
-          {/* Categories */}
-          <div className="flex flex-wrap justify-center gap-2 mb-8">
-            {categories.map((category) => (
-              <CategoryButton
-                key={category.id}
-                label={category.label}
-                icon={category.icon}
-                badge={category.badge}
-                active={selectedCategory === category.id}
-                onClick={() => {
-                  setSelectedCategory(category.id)
-                  console.log('Selected category:', category.id)
-                }}
-              />
-            ))}
-            <Button 
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-              data-testid="button-more-categories"
-            >
-              More...
-            </Button>
-          </div>
+          <div className="mb-8" />
         </div>
         
         {/* Recent Apps */}

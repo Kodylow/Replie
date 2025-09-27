@@ -162,7 +162,7 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
                   <Bell className="w-4 h-4 mr-2" />
                   Notifications
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => console.log('Create Team clicked')}>
+                <DropdownMenuItem onClick={() => setLocation('/teams/new')} data-testid="button-create-team">
                   <Users className="w-4 h-4 mr-2" />
                   Create Team
                 </DropdownMenuItem>
@@ -173,21 +173,20 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-xs text-muted-foreground">Switch Workspace</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => setLocation('/projects')}>
-                <Avatar className="h-4 w-4 mr-2">
-                  <AvatarImage src="" alt="Personal" />
-                  <AvatarFallback className="text-[10px]">P</AvatarFallback>
-                </Avatar>
-                Personal
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setLocation('/projects')}>
-                <Avatar className="h-4 w-4 mr-2">
-                  <AvatarImage src="" alt="Replit - Demo" />
-                  <AvatarFallback className="text-[10px]">RD</AvatarFallback>
-                </Avatar>
-                Replit - Demo
-                <span className="ml-auto text-xs text-muted-foreground">Admin</span>
-              </DropdownMenuItem>
+              {workspaces.map((workspace) => (
+                <DropdownMenuItem key={workspace.id} onClick={() => setLocation('/projects')}>
+                  <Avatar className="h-4 w-4 mr-2">
+                    <AvatarImage src={workspace.avatarUrl || ""} alt={workspace.name} />
+                    <AvatarFallback className="text-[10px]">
+                      {workspace.type === 'personal' ? 'P' : workspace.name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  {workspace.name}
+                  {workspace.type === 'team' && (
+                    <span className="ml-auto text-xs text-muted-foreground">Admin</span>
+                  )}
+                </DropdownMenuItem>
+              ))}
               <DropdownMenuSeparator />
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>

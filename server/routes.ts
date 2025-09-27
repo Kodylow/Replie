@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertProjectSchema, insertAppSchema, insertWorkspaceSchema, insertWorkspaceMemberSchema } from "@shared/schema";
+import { insertProjectSchema, insertAppSchema, insertWorkspaceSchema, insertWorkspaceMemberSchema, createTeamSchema } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { z } from "zod";
 
@@ -188,6 +188,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error removing workspace member:", error);
       res.status(500).json({ error: "Failed to remove workspace member" });
+    }
+  });
+
+  // Team creation route - specialized endpoint for creating team workspaces
+  app.post("/api/teams", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = createTeamSchema.parse(req.body);
+      
+      // Generate slug from organization name
+      const slug = validatedData.organizationName
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+      
+      // Create the team workspace
+      const workspace = await storage.createWorkspace({
+        name: validatedData.organizationName,
+        type: 'team',
+        slug: slug,
+        description: validatedData.description || null,
+      });
+      
+      // Add creator as owner
+      await storage.addWorkspaceMember({
+        workspaceId: workspace.id,
+        userId: userId,
+        role: "owner"
+      });
+      
+      // Parse and process team member invites (for now just log them)
+      if (validatedData.inviteEmails && validatedData.inviteEmails.trim()) {
+        const emails = validatedData.inviteEmails
+          .split(',')
+          .map(email => email.trim())
+          .filter(email => email.length > 0);
+        
+        // For now, just log the invited emails
+        // TODO: In future implementation, send actual email invitations
+        console.log(`Team ${workspace.name} created with invited emails:`, emails);
+      }
+      
+      // Log billing information for future Stripe integration
+      console.log(`Team ${workspace.name} created with plan: ${validatedData.plan}, billing email: ${validatedData.billingEmail}`);
+      
+      res.status(201).json({
+        workspace,
+        message: "Team created successfully",
+        billingEmail: validatedData.billingEmail,
+        plan: validatedData.plan
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Validation failed", 
+          details: error.errors 
+        });
+      }
+      console.error("Error creating team:", error);
+      res.status(500).json({ error: "Failed to create team" });
     }
   });
 
