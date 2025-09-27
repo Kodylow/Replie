@@ -1,5 +1,9 @@
 import { type User, type UpsertUser, type InsertUser, type Project, type InsertProject, type App, type InsertApp, type Workspace, type InsertWorkspace, type WorkspaceMember, type InsertWorkspaceMember, type WorkspaceMemberWithUser, type Template, type InsertTemplate, type ChatConversation, type InsertChatConversation, type ChatMessage, type InsertChatMessage } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
+import { users, workspaces, workspaceMembers, projects, apps, templates, chatConversations, chatMessages } from "@shared/schema";
+import { eq, and, or, ilike, desc } from 'drizzle-orm';
 
 // modify the interface with any CRUD methods
 // you might need
@@ -771,4 +775,208 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Database storage implementation using Drizzle ORM
+export class DBStorage implements IStorage {
+  private db;
+
+  constructor() {
+    if (!process.env.DATABASE_URL) {
+      throw new Error("DATABASE_URL environment variable is required");
+    }
+    const sql = neon(process.env.DATABASE_URL);
+    this.db = drizzle(sql);
+  }
+
+  // User methods
+  async getUser(id: string): Promise<User | undefined> {
+    const result = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
+    return result[0];
+  }
+
+  async upsertUser(user: UpsertUser): Promise<User> {
+    const now = new Date();
+    const existingUser = await this.getUser(user.id);
+    
+    if (existingUser) {
+      const updated = await this.db
+        .update(users)
+        .set({ ...user, updatedAt: now })
+        .where(eq(users.id, user.id))
+        .returning();
+      return updated[0];
+    } else {
+      const created = await this.db
+        .insert(users)
+        .values({ ...user, createdAt: now, updatedAt: now })
+        .returning();
+      return created[0];
+    }
+  }
+
+  async updateUser(id: string, updates: Partial<{ firstName: string; lastName: string; bio: string }>): Promise<User | undefined> {
+    const updated = await this.db
+      .update(users)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return updated[0];
+  }
+
+  // Workspace methods
+  async getWorkspace(id: string): Promise<Workspace | undefined> {
+    const result = await this.db.select().from(workspaces).where(eq(workspaces.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getUserWorkspaces(userId: string): Promise<Workspace[]> {
+    const membershipRecords = await this.db
+      .select()
+      .from(workspaceMembers)
+      .where(eq(workspaceMembers.userId, userId));
+    
+    if (membershipRecords.length === 0) {
+      return [];
+    }
+    
+    const workspaceIds = membershipRecords.map(m => m.workspaceId);
+    const workspaceResults = await this.db
+      .select()
+      .from(workspaces)
+      .where(or(...workspaceIds.map(id => eq(workspaces.id, id))));
+    
+    // Sort personal workspace first
+    return workspaceResults.sort((a, b) => {
+      if (a.type === 'personal' && b.type !== 'personal') return -1;
+      if (b.type === 'personal' && a.type !== 'personal') return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  async createWorkspace(workspace: InsertWorkspace): Promise<Workspace> {
+    const now = new Date();
+    const created = await this.db
+      .insert(workspaces)
+      .values({ ...workspace, createdAt: now, updatedAt: now })
+      .returning();
+    return created[0];
+  }
+
+  async updateWorkspace(id: string, workspace: Partial<InsertWorkspace>): Promise<Workspace | undefined> {
+    const updated = await this.db
+      .update(workspaces)
+      .set({ ...workspace, updatedAt: new Date() })
+      .where(eq(workspaces.id, id))
+      .returning();
+    return updated[0];
+  }
+
+  async deleteWorkspace(id: string): Promise<boolean> {
+    const deleted = await this.db.delete(workspaces).where(eq(workspaces.id, id)).returning();
+    return deleted.length > 0;
+  }
+
+  async getDefaultWorkspace(userId: string): Promise<Workspace | undefined> {
+    const userWorkspaces = await this.getUserWorkspaces(userId);
+    return userWorkspaces.find(w => w.type === 'personal') || userWorkspaces[0];
+  }
+
+  // Workspace membership methods
+  async addWorkspaceMember(member: InsertWorkspaceMember): Promise<WorkspaceMember> {
+    const now = new Date();
+    const created = await this.db
+      .insert(workspaceMembers)
+      .values({ ...member, createdAt: now })
+      .returning();
+    return created[0];
+  }
+
+  async removeWorkspaceMember(workspaceId: string, userId: string): Promise<boolean> {
+    const deleted = await this.db
+      .delete(workspaceMembers)
+      .where(and(eq(workspaceMembers.workspaceId, workspaceId), eq(workspaceMembers.userId, userId)))
+      .returning();
+    return deleted.length > 0;
+  }
+
+  async getWorkspaceMembers(workspaceId: string): Promise<WorkspaceMember[]> {
+    return await this.db
+      .select()
+      .from(workspaceMembers)
+      .where(eq(workspaceMembers.workspaceId, workspaceId))
+      .orderBy(workspaceMembers.createdAt);
+  }
+
+  async getWorkspaceMembersWithUsers(workspaceId: string): Promise<WorkspaceMemberWithUser[]> {
+    const members = await this.getWorkspaceMembers(workspaceId);
+    const membersWithUsers: WorkspaceMemberWithUser[] = [];
+    
+    for (const member of members) {
+      const user = await this.getUser(member.userId);
+      if (user) {
+        membersWithUsers.push({
+          id: member.id,
+          workspaceId: member.workspaceId,
+          role: member.role,
+          createdAt: member.createdAt || new Date(),
+          user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            profileImageUrl: user.profileImageUrl,
+          }
+        });
+      }
+    }
+    
+    return membersWithUsers;
+  }
+
+  async isWorkspaceMember(workspaceId: string, userId: string): Promise<boolean> {
+    const result = await this.db
+      .select()
+      .from(workspaceMembers)
+      .where(and(eq(workspaceMembers.workspaceId, workspaceId), eq(workspaceMembers.userId, userId)))
+      .limit(1);
+    return result.length > 0;
+  }
+
+  // Stub methods for remaining interface - implementing only what's needed for workspace functionality
+  async getProject(id: string): Promise<Project | undefined> { return undefined; }
+  async getWorkspaceProjects(workspaceId: string): Promise<Project[]> { return []; }
+  async createProject(project: InsertProject): Promise<Project> { throw new Error("Not implemented"); }
+  async updateProject(id: string, project: Partial<InsertProject>): Promise<Project | undefined> { return undefined; }
+  async deleteProject(id: string): Promise<boolean> { return false; }
+  async searchProjects(workspaceId: string, query: string): Promise<Project[]> { return []; }
+  
+  async getApp(id: string): Promise<App | undefined> { return undefined; }
+  async getWorkspaceApps(workspaceId: string): Promise<App[]> { return []; }
+  async createApp(app: InsertApp): Promise<App> { throw new Error("Not implemented"); }
+  async updateApp(id: string, app: Partial<InsertApp>): Promise<App | undefined> { return undefined; }
+  async deleteApp(id: string): Promise<boolean> { return false; }
+  async searchApps(workspaceId: string, query: string): Promise<App[]> { return []; }
+  
+  async getTemplate(id: string): Promise<Template | undefined> { return undefined; }
+  async getAllTemplates(): Promise<Template[]> { return []; }
+  async getTemplatesByCategory(category: string): Promise<Template[]> { return []; }
+  async searchTemplates(query: string, category?: string): Promise<Template[]> { return []; }
+  async incrementTemplateUsage(id: string): Promise<void> {}
+  
+  async getChatConversation(id: string): Promise<ChatConversation | undefined> { return undefined; }
+  async getUserChatConversations(userId: string): Promise<ChatConversation[]> { return []; }
+  async createChatConversation(conversation: InsertChatConversation): Promise<ChatConversation> { throw new Error("Not implemented"); }
+  async updateChatConversation(id: string, conversation: Partial<InsertChatConversation>): Promise<ChatConversation | undefined> { return undefined; }
+  async deleteChatConversation(id: string): Promise<boolean> { return false; }
+  
+  async getChatMessage(id: string): Promise<ChatMessage | undefined> { return undefined; }
+  async getConversationMessages(conversationId: string): Promise<ChatMessage[]> { return []; }
+  async createChatMessage(message: InsertChatMessage): Promise<ChatMessage> { throw new Error("Not implemented"); }
+  async deleteChatMessage(id: string): Promise<boolean> { return false; }
+  
+  async initializeAppFiles(appId: string, objectStoragePath: string): Promise<boolean> { return false; }
+  async updateAppObjectStoragePath(appId: string, objectStoragePath: string): Promise<App | undefined> { return undefined; }
+  
+  async createUserSampleData(workspaceId: string, userName: string, userId: string): Promise<void> {}
+}
+
+export const storage = new DBStorage();

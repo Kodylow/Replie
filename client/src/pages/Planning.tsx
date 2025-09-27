@@ -32,6 +32,7 @@ export default function Planning() {
   const [showModeSelection, setShowModeSelection] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [hasStartedChat, setHasStartedChat] = useState(false);
+  const [selectedMode, setSelectedMode] = useState<null | 'build' | 'design'>(null);
 
   // Extract project idea from URL parameters and start real AI planning
   useEffect(() => {
@@ -208,71 +209,79 @@ export default function Planning() {
 
                 {/* Mode Selection Cards - only show after response is complete */}
                 {showModeSelection && !isTyping && (
-                  <div className="space-y-6 pt-8">
-                    <div className="text-center">
-                      <h3 className="text-lg font-medium mb-2">How do you want to continue?</h3>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      {/* Build the entire app */}
-                      <Card 
-                        className="cursor-pointer hover:bg-gray-50 transition-colors border-2"
-                        onClick={() => handleModeSelection('build')}
-                        data-testid="card-build-mode"
-                      >
-                        <CardContent className="p-6">
-                          <div className="flex items-start gap-4">
-                            <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                              <Code className="w-5 h-5 text-gray-600" />
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <h4 className="font-semibold">Build the entire app</h4>
-                                <div className="flex items-center gap-1 text-sm text-gray-500">
-                                  <Clock className="w-3 h-3" />
-                                  20+ mins
-                                </div>
-                              </div>
-                              <p className="text-sm text-gray-600">
-                                Best if you want Agent to build out the full functionality of your app
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                  <div className="pt-8">
+                    <div className="border border-gray-200 rounded-lg p-4 md:p-6">
+                      <div className="text-center space-y-1">
+                        <p className="text-sm text-gray-600">I've created a feature list based on your request. If everything looks good, we can start creating.</p>
+                        <h3 className="text-lg font-medium">How do you want to continue?</h3>
+                      </div>
 
-                      {/* Start with a design */}
-                      <Card 
-                        className="cursor-pointer hover:bg-gray-50 transition-colors border-2"
-                        onClick={() => handleModeSelection('design')}
-                        data-testid="card-design-mode"
-                      >
-                        <CardContent className="p-6">
-                          <div className="flex items-start gap-4">
-                            <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                              <Palette className="w-5 h-5 text-gray-600" />
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <h4 className="font-semibold">Start with a design</h4>
-                                <div className="flex items-center gap-1 text-sm text-gray-500">
-                                  <Clock className="w-3 h-3" />
-                                  5-10 mins
-                                </div>
+                      <div className="mt-4 grid grid-cols-2 gap-4">
+                        {/* Build the entire app */}
+                        <Card 
+                          className={`cursor-pointer transition-colors border ${selectedMode === 'build' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}
+                          onClick={() => setSelectedMode('build')}
+                          data-testid="card-build-mode"
+                        >
+                          <CardContent className="p-6">
+                            <div className="flex items-start gap-4">
+                              <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                                <Code className="w-5 h-5 text-gray-600" />
                               </div>
-                              <p className="text-sm text-gray-600">
-                                Best if you want to see a design prototype first, then iterate on visuals or features
-                              </p>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <h4 className="font-semibold">Build the entire app</h4>
+                                  <div className="flex items-center gap-1 text-sm text-gray-500">
+                                    <Clock className="w-3 h-3" />
+                                    20+ mins
+                                  </div>
+                                </div>
+                                <p className="text-sm text-gray-600">
+                                  Best if you want Agent to build out the full functionality of your app
+                                </p>
+                              </div>
+                              {/* Radio indicator */}
+                              <div className={`mt-1 w-5 h-5 rounded-full border ${selectedMode === 'build' ? 'border-blue-600 ring-4 ring-blue-200 bg-blue-600' : 'border-gray-300'} flex-shrink-0`} aria-hidden="true"></div>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                          </CardContent>
+                        </Card>
+
+                        {/* Start with a design */}
+                        <Card 
+                          className={`cursor-pointer transition-colors border ${selectedMode === 'design' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}
+                          onClick={() => setSelectedMode('design')}
+                          data-testid="card-design-mode"
+                        >
+                          <CardContent className="p-6">
+                            <div className="flex items-start gap-4">
+                              <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                                <Palette className="w-5 h-5 text-gray-600" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <h4 className="font-semibold">Start with a design</h4>
+                                  <div className="flex items-center gap-1 text-sm text-gray-500">
+                                    <Clock className="w-3 h-3" />
+                                    5-10 mins
+                                  </div>
+                                </div>
+                                <p className="text-sm text-gray-600">
+                                  Best if you want to see a design prototype first, then iterate on visuals or features
+                                </p>
+                              </div>
+                              {/* Radio indicator */}
+                              <div className={`mt-1 w-5 h-5 rounded-full border ${selectedMode === 'design' ? 'border-blue-600 ring-4 ring-blue-200 bg-blue-600' : 'border-gray-300'} flex-shrink-0`} aria-hidden="true"></div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
 
                       {/* Start building button */}
                       <div className="pt-4">
                         <Button 
-                          className="w-full bg-blue-500 hover:bg-blue-600 text-white"
-                          onClick={() => handleModeSelection('build')}
+                          className="w-full bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={!selectedMode}
+                          onClick={() => selectedMode && handleModeSelection(selectedMode)}
                           data-testid="button-start-building"
                         >
                           Start building →
