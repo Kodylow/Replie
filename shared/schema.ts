@@ -71,6 +71,8 @@ export const apps = pgTable("apps", {
   isPublished: text("is_published").notNull().default('false'), // 'true' or 'false' as text
   isPrivate: text("is_private").notNull().default('true'), // 'true' or 'false' as text
   backgroundColor: text("background_color").notNull().default('bg-gradient-to-br from-blue-500 to-purple-600'),
+  objectStoragePath: text("object_storage_path"), // Base path in object storage for this app's files
+  filesInitialized: text("files_initialized").notNull().default('false'), // 'true' or 'false' as text
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
   updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
 });
@@ -268,3 +270,21 @@ export const modeSelectionSchema = z.object({
 });
 
 export type ModeSelectionRequest = z.infer<typeof modeSelectionSchema>;
+
+// App file operation schemas
+export const appFileContentSchema = z.object({
+  content: z.string(),
+});
+
+export const appFileSaveSchema = z.object({
+  filename: z.enum(["index.html", "styles.css", "script.js", "db.json"]),
+  content: z.string(),
+});
+
+export const appFilesSaveSchema = z.object({
+  files: z.record(z.string(), z.string()), // filename -> content mapping
+});
+
+export type AppFileContentRequest = z.infer<typeof appFileContentSchema>;
+export type AppFileSaveRequest = z.infer<typeof appFileSaveSchema>;
+export type AppFilesSaveRequest = z.infer<typeof appFilesSaveSchema>;

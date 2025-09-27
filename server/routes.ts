@@ -1,8 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertProjectSchema, insertAppSchema, insertWorkspaceSchema, insertWorkspaceMemberSchema, createTeamSchema, updateProfileSchema, githubImportSchema, zipImportSchema, templateCloneSchema, planningChatSchema, modeSelectionSchema } from "@shared/schema";
+import { insertProjectSchema, insertAppSchema, insertWorkspaceSchema, insertWorkspaceMemberSchema, createTeamSchema, updateProfileSchema, githubImportSchema, zipImportSchema, templateCloneSchema, planningChatSchema, modeSelectionSchema, appFileContentSchema, appFileSaveSchema, appFilesSaveSchema } from "@shared/schema";
 import OpenAI from 'openai';
+import { ObjectStorageService, ObjectNotFoundError, objectStorageClient } from './objectStorage';
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { z } from "zod";
 import { Octokit } from '@octokit/rest';
@@ -17,6 +18,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
   });
+
+  // Initialize Object Storage Service
+  const objectStorageService = new ObjectStorageService();
 
   // Auth middleware setup
   await setupAuth(app);
@@ -596,6 +600,356 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to search apps" });
     }
   });
+
+  // App File Management Routes
+  
+  // Helper function to parse object storage path  
+  function parseObjectPath(fullPath: string): { bucketName: string; objectName: string } {
+    const pathParts = fullPath.split('/').filter(part => part.length > 0);
+    if (pathParts.length < 2) {
+      throw new Error('Invalid object path format');
+    }
+    const bucketName = pathParts[0];
+    const objectName = pathParts.slice(1).join('/');
+    return { bucketName, objectName };
+  }
+
+  // Helper function to get app file starter templates
+  function getStarterTemplates(): Record<string, string> {
+    return {
+      'index.html': `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My App</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to My App</h1>
+        <p>Edit this content to build your application!</p>
+        <button id="demo-btn">Click me!</button>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>`,
+      'styles.css': `/* App Styles */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #0d1117;
+    color: #e6edf3;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+h1 {
+    color: #79c0ff;
+    margin-bottom: 20px;
+}
+
+button {
+    background-color: #238636;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+button:hover {
+    background-color: #2ea043;
+}`,
+      'script.js': `// App JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+    const button = document.getElementById('demo-btn');
+    
+    button.addEventListener('click', function() {
+        alert('Hello from your app!');
+    });
+    
+    console.log('App initialized successfully!');
+});`,
+      'db.json': `{
+  "users": [],
+  "posts": [],
+  "settings": {
+    "theme": "dark",
+    "version": "1.0.0"
+  }
+}`
+    };
+  }
+
+  // Initialize app files in object storage
+  app.post("/api/apps/:appId/initialize", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const appId = req.params.appId;
+      
+      const app = await storage.getApp(appId);
+      if (!app) {
+        return res.status(404).json({ error: "App not found" });
+      }
+      
+      // Check if user is a member of the app's workspace
+      const isMember = await storage.isWorkspaceMember(app.workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to app" });
+      }
+      
+      // Skip if already initialized
+      if (app.filesInitialized === 'true') {
+        return res.json({ message: "App files already initialized" });
+      }
+      
+      // Create object storage path for this app
+      const privateDir = objectStorageService.getPrivateObjectDir();
+      const appPath = `${privateDir}/apps/${appId}`;
+      
+      try {
+        // Create starter files
+        const templates = getStarterTemplates();
+        const { bucketName } = parseObjectPath(appPath);
+        const bucket = objectStorageClient.bucket(bucketName);
+        
+        // Upload each starter file
+        for (const [filename, content] of Object.entries(templates)) {
+          const objectName = `${appPath.split('/').slice(1).join('/')}/${filename}`;
+          const file = bucket.file(objectName);
+          await file.save(content, {
+            metadata: { contentType: getContentType(filename) }
+          });
+        }
+        
+        // Update app record
+        await storage.initializeAppFiles(appId, appPath);
+        
+        res.json({ message: "App files initialized successfully", objectStoragePath: appPath });
+      } catch (error) {
+        console.error("Error initializing app files:", error);
+        res.status(500).json({ error: "Failed to initialize app files" });
+      }
+    } catch (error) {
+      console.error("Error initializing app:", error);
+      res.status(500).json({ error: "Failed to initialize app" });
+    }
+  });
+
+  // List all files for an app
+  app.get("/api/apps/:appId/files", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const appId = req.params.appId;
+      
+      const app = await storage.getApp(appId);
+      if (!app) {
+        return res.status(404).json({ error: "App not found" });
+      }
+      
+      // Check if user is a member of the app's workspace
+      const isMember = await storage.isWorkspaceMember(app.workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to app" });
+      }
+      
+      if (!app.objectStoragePath) {
+        return res.json({ files: [] });
+      }
+      
+      const { bucketName } = parseObjectPath(app.objectStoragePath);
+      const bucket = objectStorageClient.bucket(bucketName);
+      const prefix = `${app.objectStoragePath.split('/').slice(1).join('/')}/`;
+      
+      const [files] = await bucket.getFiles({ prefix });
+      const fileList = files
+        .filter(file => file.name.endsWith('.html') || file.name.endsWith('.css') || file.name.endsWith('.js') || file.name.endsWith('.json'))
+        .map(file => ({
+          name: file.name.split('/').pop(),
+          path: file.name,
+          size: file.metadata.size,
+          lastModified: file.metadata.updated
+        }));
+      
+      res.json({ files: fileList });
+    } catch (error) {
+      console.error("Error listing app files:", error);
+      res.status(500).json({ error: "Failed to list app files" });
+    }
+  });
+
+  // Get specific file content
+  app.get("/api/apps/:appId/files/:filename", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const appId = req.params.appId;
+      const filename = req.params.filename;
+      
+      // Validate filename
+      const allowedFiles = ['index.html', 'styles.css', 'script.js', 'db.json'];
+      if (!allowedFiles.includes(filename)) {
+        return res.status(400).json({ error: "Invalid filename" });
+      }
+      
+      const app = await storage.getApp(appId);
+      if (!app) {
+        return res.status(404).json({ error: "App not found" });
+      }
+      
+      // Check if user is a member of the app's workspace
+      const isMember = await storage.isWorkspaceMember(app.workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to app" });
+      }
+      
+      if (!app.objectStoragePath) {
+        return res.status(404).json({ error: "App files not initialized" });
+      }
+      
+      const { bucketName } = parseObjectPath(app.objectStoragePath);
+      const bucket = objectStorageClient.bucket(bucketName);
+      const objectName = `${app.objectStoragePath.split('/').slice(1).join('/')}/${filename}`;
+      const file = bucket.file(objectName);
+      
+      try {
+        const [content] = await file.download();
+        res.json({ content: content.toString('utf8') });
+      } catch (error: any) {
+        if (error.code === 404) {
+          return res.status(404).json({ error: "File not found" });
+        }
+        throw error;
+      }
+    } catch (error) {
+      console.error("Error reading app file:", error);
+      res.status(500).json({ error: "Failed to read app file" });
+    }
+  });
+
+  // Save specific file content
+  app.put("/api/apps/:appId/files/:filename", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const appId = req.params.appId;
+      const filename = req.params.filename;
+      
+      // Validate filename
+      const allowedFiles = ['index.html', 'styles.css', 'script.js', 'db.json'];
+      if (!allowedFiles.includes(filename)) {
+        return res.status(400).json({ error: "Invalid filename" });
+      }
+      
+      const validatedData = appFileContentSchema.parse(req.body);
+      
+      const app = await storage.getApp(appId);
+      if (!app) {
+        return res.status(404).json({ error: "App not found" });
+      }
+      
+      // Check if user is a member of the app's workspace
+      const isMember = await storage.isWorkspaceMember(app.workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to app" });
+      }
+      
+      if (!app.objectStoragePath) {
+        return res.status(404).json({ error: "App files not initialized" });
+      }
+      
+      const { bucketName } = parseObjectPath(app.objectStoragePath);
+      const bucket = objectStorageClient.bucket(bucketName);
+      const objectName = `${app.objectStoragePath.split('/').slice(1).join('/')}/${filename}`;
+      const file = bucket.file(objectName);
+      
+      await file.save(validatedData.content, {
+        metadata: { contentType: getContentType(filename) }
+      });
+      
+      res.json({ message: "File saved successfully" });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Validation failed", 
+          details: error.errors 
+        });
+      }
+      console.error("Error saving app file:", error);
+      res.status(500).json({ error: "Failed to save app file" });
+    }
+  });
+
+  // Save all app files
+  app.post("/api/apps/:appId/save", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const appId = req.params.appId;
+      const validatedData = appFilesSaveSchema.parse(req.body);
+      
+      const app = await storage.getApp(appId);
+      if (!app) {
+        return res.status(404).json({ error: "App not found" });
+      }
+      
+      // Check if user is a member of the app's workspace
+      const isMember = await storage.isWorkspaceMember(app.workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to app" });
+      }
+      
+      if (!app.objectStoragePath) {
+        return res.status(404).json({ error: "App files not initialized" });
+      }
+      
+      const { bucketName } = parseObjectPath(app.objectStoragePath);
+      const bucket = objectStorageClient.bucket(bucketName);
+      
+      // Save each file
+      const savePromises = Object.entries(validatedData.files).map(async ([filename, content]) => {
+        const allowedFiles = ['index.html', 'styles.css', 'script.js', 'db.json'];
+        if (!allowedFiles.includes(filename)) {
+          throw new Error(`Invalid filename: ${filename}`);
+        }
+        
+        const objectName = `${app.objectStoragePath!.split('/').slice(1).join('/')}/${filename}`;
+        const file = bucket.file(objectName);
+        await file.save(content, {
+          metadata: { contentType: getContentType(filename) }
+        });
+      });
+      
+      await Promise.all(savePromises);
+      
+      res.json({ message: "All files saved successfully" });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Validation failed", 
+          details: error.errors 
+        });
+      }
+      console.error("Error saving app files:", error);
+      res.status(500).json({ error: "Failed to save app files" });
+    }
+  });
+
+  // Helper function to get content type
+  function getContentType(filename: string): string {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    switch (ext) {
+      case 'html': return 'text/html';
+      case 'css': return 'text/css';
+      case 'js': return 'application/javascript';
+      case 'json': return 'application/json';
+      default: return 'text/plain';
+    }
+  }
 
   // GitHub Integration Helper Functions
   let connectionSettings: any;

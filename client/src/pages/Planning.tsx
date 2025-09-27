@@ -83,6 +83,32 @@ export default function Planning() {
     },
   });
 
+  const createAppMutation = useMutation({
+    mutationFn: async () => {
+      if (!currentWorkspace?.id) throw new Error('No workspace selected');
+      
+      // Extract project title from conversation or use default
+      const lastMessage = messages[messages.length - 1];
+      const projectTitle = lastMessage?.content?.split('\n')[0] || 'My App';
+      
+      const response = await apiRequest('POST', `/api/workspaces/${currentWorkspace.id}/apps`, {
+        title: projectTitle,
+        creator: user?.firstName || 'User',
+        isPublished: 'false',
+        isPrivate: 'true',
+        backgroundColor: 'bg-gradient-to-br from-blue-500 to-purple-600'
+      });
+      return await response.json();
+    },
+    onSuccess: (app) => {
+      // Navigate to editor with the new app
+      setLocation(`/editor/${app.id}`);
+    },
+    onError: (error: any) => {
+      console.error('Error creating app:', error);
+    },
+  });
+
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim() || chatMutation.isPending) return;
@@ -92,7 +118,13 @@ export default function Planning() {
   };
 
   const handleModeSelection = (mode: 'design' | 'build') => {
-    modeSelectionMutation.mutate(mode);
+    if (mode === 'build') {
+      // Create app and navigate to editor
+      createAppMutation.mutate();
+    } else {
+      // Use standard mode selection for design mode
+      modeSelectionMutation.mutate(mode);
+    }
   };
 
   return (

@@ -60,6 +60,10 @@ export interface IStorage {
   getConversationMessages(conversationId: string): Promise<ChatMessage[]>;
   createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
   deleteChatMessage(id: string): Promise<boolean>;
+  
+  // App file management methods
+  initializeAppFiles(appId: string, objectStoragePath: string): Promise<boolean>;
+  updateAppObjectStoragePath(appId: string, objectStoragePath: string): Promise<App | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -1023,6 +1027,34 @@ export class MemStorage implements IStorage {
 
   async deleteChatMessage(id: string): Promise<boolean> {
     return this.chatMessages.delete(id);
+  }
+
+  // App file management methods
+  async initializeAppFiles(appId: string, objectStoragePath: string): Promise<boolean> {
+    const app = this.apps.get(appId);
+    if (!app) return false;
+
+    const updatedApp: App = {
+      ...app,
+      objectStoragePath,
+      filesInitialized: 'true',
+      updatedAt: new Date(),
+    };
+    this.apps.set(appId, updatedApp);
+    return true;
+  }
+
+  async updateAppObjectStoragePath(appId: string, objectStoragePath: string): Promise<App | undefined> {
+    const app = this.apps.get(appId);
+    if (!app) return undefined;
+
+    const updatedApp: App = {
+      ...app,
+      objectStoragePath,
+      updatedAt: new Date(),
+    };
+    this.apps.set(appId, updatedApp);
+    return updatedApp;
   }
 }
 
