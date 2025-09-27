@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search, Grid3X3, List, Star } from 'lucide-react'
+import { Search, Grid3X3, List, Star, Home, Volume2, BarChart3, Globe, Bot, Building } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -9,7 +9,7 @@ interface PublishedApp {
   id: string
   name: string
   url?: string
-  icon: string
+  icon: any
   lastUpdated: string
   isStarred?: boolean
 }
@@ -18,41 +18,41 @@ const SAMPLE_PUBLISHED_APPS: PublishedApp[] = [
   {
     id: '1',
     name: 'ReplitOnboard',
-    icon: '🏠',
+    icon: Home,
     lastUpdated: '2 days ago'
   },
   {
     id: '2', 
     name: 'KevinVoiceGenerator',
     url: 'kevinvoicegenerator.replit.app',
-    icon: '🔊',
+    icon: Volume2,
     lastUpdated: '1 year ago'
   },
   {
     id: '3',
     name: 'CostCompare', 
     url: 'cost-compare.replit.app',
-    icon: '📊',
+    icon: BarChart3,
     lastUpdated: '1 month ago'
   },
   {
     id: '4',
     name: 'ProductClub-LandingPage',
     url: 'product-club-replit.replit.app', 
-    icon: '🌐',
+    icon: Globe,
     lastUpdated: '1 year ago'
   },
   {
     id: '5',
     name: 'ReplitNewsBot',
-    icon: '🤖',
+    icon: Bot,
     lastUpdated: '6 months ago'
   },
   {
     id: '6',
     name: 'VermeerListings',
     url: 'vermeer-listings.replit.app',
-    icon: '🏡',
+    icon: Building,
     lastUpdated: '1 year ago'
   }
 ]
@@ -62,13 +62,50 @@ interface PublishedAppsProps {
   isSearching: boolean
 }
 
-function AppCard({ app, isStarred }: { app: PublishedApp; isStarred?: boolean }) {
+function AppCard({ app, isStarred, viewMode = 'grid' }: { app: PublishedApp; isStarred?: boolean; viewMode?: 'grid' | 'list' }) {
+  const IconComponent = app.icon
+  
+  if (viewMode === 'list') {
+    return (
+      <Card className="hover-elevate cursor-pointer group" data-testid={`card-published-app-${app.id}`}>
+        <CardContent className="p-4">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
+              <IconComponent className="w-5 h-5" />
+            </div>
+            
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="font-medium text-sm truncate" data-testid={`text-app-name-${app.id}`}>
+                  {app.name}
+                </h3>
+                {isStarred && (
+                  <Star className="w-4 h-4 text-yellow-500 fill-yellow-500 flex-shrink-0" />
+                )}
+              </div>
+              
+              {app.url && (
+                <p className="text-xs text-muted-foreground truncate" data-testid={`text-app-url-${app.id}`}>
+                  {app.url}
+                </p>
+              )}
+            </div>
+            
+            <div className="text-xs text-muted-foreground flex-shrink-0" data-testid={`text-last-updated-${app.id}`}>
+              Updated {app.lastUpdated}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+  
   return (
     <Card className="hover-elevate cursor-pointer group" data-testid={`card-published-app-${app.id}`}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between mb-3">
-          <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center text-xl">
-            {app.icon}
+          <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
+            <IconComponent className="w-6 h-6" />
           </div>
           {isStarred && (
             <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
@@ -186,9 +223,12 @@ export default function PublishedApps({ searchResults = [], isSearching }: Publi
                 <p className="text-muted-foreground">No starred apps yet</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+              <div className={viewMode === 'grid' 
+                ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4"
+                : "space-y-2"
+              }>
                 {starredApps.map(app => (
-                  <AppCard key={app.id} app={app} isStarred />
+                  <AppCard key={app.id} app={app} isStarred viewMode={viewMode} />
                 ))}
               </div>
             )}
@@ -201,9 +241,12 @@ export default function PublishedApps({ searchResults = [], isSearching }: Publi
                 Recently Viewed
               </h2>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+              <div className={viewMode === 'grid' 
+                ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4"
+                : "space-y-2"
+              }>
                 {filteredRecentlyViewed.map(app => (
-                  <AppCard key={app.id} app={app} />
+                  <AppCard key={app.id} app={app} viewMode={viewMode} />
                 ))}
               </div>
             </section>
@@ -216,9 +259,12 @@ export default function PublishedApps({ searchResults = [], isSearching }: Publi
                 Popular Apps at Replit - Demo
               </h2>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+              <div className={viewMode === 'grid' 
+                ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4"
+                : "space-y-2"
+              }>
                 {filteredPopularApps.map(app => (
-                  <AppCard key={app.id} app={app} />
+                  <AppCard key={app.id} app={app} viewMode={viewMode} />
                 ))}
               </div>
             </section>
