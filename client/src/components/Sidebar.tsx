@@ -176,7 +176,12 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
           active={location === '/apps'}
           onClick={() => setLocation('/apps')} 
         />
-        <NavItem icon={Globe} label="Published apps" onClick={() => console.log('Published apps clicked')} />
+        <NavItem 
+          icon={Globe} 
+          label="Published apps" 
+          active={location === '/published-apps'}
+          onClick={() => setLocation('/published-apps')}
+        />
         
         <div className="py-2">
           <p className="text-xs font-medium text-muted-foreground px-3 pb-2">Manage Organization</p>

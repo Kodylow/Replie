@@ -9,6 +9,7 @@ import Header from '@/components/Header'
 import Home from "@/pages/Home";
 import Projects from "@/pages/Projects";
 import Apps from "@/pages/Apps";
+import PublishedApps from "@/pages/PublishedApps";
 import NotFound from "@/pages/not-found";
 import ProjectDetail from "@/pages/ProjectDetail";
 import type { Project } from '@shared/schema'
@@ -21,6 +22,9 @@ function Router({ searchResults, isSearching }: { searchResults: Project[], isSe
       </Route>
       <Route path="/apps">
         <Apps searchResults={searchResults} isSearching={isSearching} />
+      </Route>
+      <Route path="/published-apps">
+        <PublishedApps searchResults={searchResults} isSearching={isSearching} />
       </Route>
       <Route path="/project/:id" component={ProjectDetail} />
       <Route path="/">
