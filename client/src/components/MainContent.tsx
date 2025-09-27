@@ -17,6 +17,7 @@ import {
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
 import { useToast } from '@/hooks/use-toast'
+import { useWorkspace } from '@/contexts/WorkspaceContext'
 import CategoryButton from './CategoryButton'
 import ProjectCard from './ProjectCard'
 import ProjectEditDialog from './ProjectEditDialog'
@@ -70,11 +71,36 @@ export default function MainContent({ searchResults, isSearching = false }: Main
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [deletingProject, setDeletingProject] = useState<Project | null>(null)
   const { toast } = useToast()
+  const { currentWorkspace, isLoading: workspaceLoading } = useWorkspace()
 
-  // Fetch projects
+  // Show loading state while workspace is loading
+  if (workspaceLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading workspace...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show message if no workspace available
+  if (!currentWorkspace) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">No workspace available</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Fetch projects from current workspace
   const { data: allProjects = [], isLoading, refetch } = useQuery<Project[]>({
-    queryKey: ['/api/projects'],
-    queryFn: () => fetch('/api/projects').then(res => res.json())
+    queryKey: ['/api/workspaces', currentWorkspace?.id, 'projects'],
+    queryFn: () => fetch(`/api/workspaces/${currentWorkspace?.id}/projects`).then(res => res.json()),
+    enabled: !!currentWorkspace
   })
 
   // Use search results if searching, otherwise use all projects
@@ -83,7 +109,8 @@ export default function MainContent({ searchResults, isSearching = false }: Main
   // Create project mutation
   const createProjectMutation = useMutation({
     mutationFn: async (projectData: InsertProject) => {
-      const response = await fetch('/api/projects', {
+      if (!currentWorkspace) throw new Error('No workspace selected')
+      const response = await fetch(`/api/workspaces/${currentWorkspace.id}/projects`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(projectData)
@@ -92,8 +119,7 @@ export default function MainContent({ searchResults, isSearching = false }: Main
       return response.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/projects'] })
-      queryClient.invalidateQueries({ queryKey: ['/api/projects/search'], exact: false })
+      queryClient.invalidateQueries({ queryKey: ['/api/workspaces', currentWorkspace?.id, 'projects'] })
       setProjectIdea('')
       toast({
         title: 'Project created!',
@@ -113,7 +139,8 @@ export default function MainContent({ searchResults, isSearching = false }: Main
   // Update project mutation
   const updateProjectMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<InsertProject> }) => {
-      const response = await fetch(`/api/projects/${id}`, {
+      if (!currentWorkspace) throw new Error('No workspace selected')
+      const response = await fetch(`/api/workspaces/${currentWorkspace.id}/projects/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -122,8 +149,7 @@ export default function MainContent({ searchResults, isSearching = false }: Main
       return response.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/projects'] })
-      queryClient.invalidateQueries({ queryKey: ['/api/projects/search'], exact: false })
+      queryClient.invalidateQueries({ queryKey: ['/api/workspaces', currentWorkspace?.id, 'projects'] })
       toast({
         title: 'Project updated!',
         description: 'Your project has been updated successfully.'
@@ -142,14 +168,14 @@ export default function MainContent({ searchResults, isSearching = false }: Main
   // Delete project mutation
   const deleteProjectMutation = useMutation({
     mutationFn: async (projectId: string) => {
-      const response = await fetch(`/api/projects/${projectId}`, {
+      if (!currentWorkspace) throw new Error('No workspace selected')
+      const response = await fetch(`/api/workspaces/${currentWorkspace.id}/projects/${projectId}`, {
         method: 'DELETE'
       })
       if (!response.ok) throw new Error('Failed to delete project')
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/projects'] })
-      queryClient.invalidateQueries({ queryKey: ['/api/projects/search'], exact: false })
+      queryClient.invalidateQueries({ queryKey: ['/api/workspaces', currentWorkspace?.id, 'projects'] })
       setDeletingProject(null)
       toast({
         title: 'Project deleted!',
@@ -191,9 +217,11 @@ export default function MainContent({ searchResults, isSearching = false }: Main
             data-testid="button-workspace-dropdown"
           >
             <div className="w-6 h-6 bg-primary rounded-sm flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xs">R</span>
+              <span className="text-primary-foreground font-bold text-xs">
+                {currentWorkspace?.name.charAt(0).toUpperCase() || 'R'}
+              </span>
             </div>
-            Replit - Demo Workspace
+            {currentWorkspace?.name || 'Loading workspace...'}
             <ChevronDown className="w-4 h-4" />
           </Button>
         </div>
