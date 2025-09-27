@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from 'wouter'
-import { ArrowRight, Globe, Database, Gamepad2, Layers, Bot } from 'lucide-react'
+import { ArrowRight, Globe, Database, Gamepad2, Layers, Bot, ChevronDown, Paperclip, Link } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -182,6 +183,21 @@ export default function MainContent({ searchResults, isSearching = false }: Main
   return (
     <div className="flex-1 overflow-auto">
       <div className="max-w-4xl mx-auto px-6 py-8">
+        {/* Workspace Dropdown */}
+        <div className="flex justify-center mb-8">
+          <Button 
+            variant="ghost" 
+            className="flex items-center gap-2 text-sm font-medium"
+            data-testid="button-workspace-dropdown"
+          >
+            <div className="w-6 h-6 bg-primary rounded-sm flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-xs">R</span>
+            </div>
+            Replit - Demo Workspace
+            <ChevronDown className="w-4 h-4" />
+          </Button>
+        </div>
+
         {/* Greeting */}
         <div className="text-center mb-8">
           <h1 className="text-2xl font-semibold text-foreground mb-6">
@@ -189,36 +205,62 @@ export default function MainContent({ searchResults, isSearching = false }: Main
           </h1>
           
           {/* Project Idea Input */}
-          <div className="relative max-w-2xl mx-auto mb-6">
-            <Input
-              placeholder="Describe the idea you want to build..."
-              value={projectIdea}
-              onChange={(e) => setProjectIdea(e.target.value)}
-              className="pr-12 h-12 text-base"
-              data-testid="input-project-idea"
-            />
-            <Button
-              size="sm"
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8"
-              onClick={handleStartChat}
-              disabled={!projectIdea.trim() || createProjectMutation.isPending}
-              data-testid="button-start-chat"
-            >
-              Start chat
-              <ArrowRight className="w-4 h-4 ml-1" />
-            </Button>
-          </div>
-          
-          {/* Auto Theme Toggle */}
-          <div className="flex items-center justify-center gap-2 mb-6">
-            <Button 
-              variant="ghost" 
-              size="sm"
-              className="text-sm text-muted-foreground"
-              data-testid="button-auto-theme"
-            >
-              Auto theme
-            </Button>
+          <div className="max-w-2xl mx-auto mb-6">
+            <div className="relative border border-border rounded-lg bg-background">
+              <Textarea
+                placeholder="Describe the idea you want to build..."
+                value={projectIdea}
+                onChange={(e) => setProjectIdea(e.target.value)}
+                className="min-h-[100px] resize-none border-0 bg-transparent text-base focus-visible:ring-0 p-4"
+                data-testid="input-project-idea"
+              />
+              
+              {/* Bottom Controls */}
+              <div className="flex items-center justify-between p-3 border-t border-border">
+                <div className="flex items-center gap-3">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="p-2 h-8 w-8"
+                    data-testid="button-attach"
+                  >
+                    <Paperclip className="w-4 h-4" />
+                  </Button>
+                  
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="flex items-center gap-1 text-sm text-muted-foreground"
+                    data-testid="button-auto-theme"
+                  >
+                    Auto theme
+                    <ChevronDown className="w-3 h-3" />
+                  </Button>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="p-2 h-8 w-8"
+                    data-testid="button-link"
+                  >
+                    <Link className="w-4 h-4" />
+                  </Button>
+                  
+                  <Button
+                    size="sm"
+                    onClick={handleStartChat}
+                    disabled={!projectIdea.trim() || createProjectMutation.isPending}
+                    data-testid="button-start-chat"
+                    className="flex items-center gap-2"
+                  >
+                    Start chat
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
           
           {/* Categories */}
@@ -236,6 +278,14 @@ export default function MainContent({ searchResults, isSearching = false }: Main
                 }}
               />
             ))}
+            <Button 
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+              data-testid="button-more-categories"
+            >
+              More...
+            </Button>
           </div>
         </div>
         
