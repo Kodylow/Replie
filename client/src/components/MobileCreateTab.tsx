@@ -51,13 +51,14 @@ export default function MobileCreateTab() {
       return await response.json()
     },
     onSuccess: () => {
+      const encodedIdea = encodeURIComponent(projectIdea.trim())
       setProjectIdea('')
       toast({
         title: 'Project created!',
         description: 'Your new project has been created successfully.'
       })
-      // Navigate to planning page for full experience
-      setLocation('/planning')
+      // Navigate to planning page with project idea
+      setLocation(`/planning?idea=${encodedIdea}`)
     },
     onError: (error) => {
       console.error('Error creating project:', error)
