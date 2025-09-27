@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import type { CreateTeamRequest } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -275,7 +276,10 @@ function PlanStep({ formData, updateFormData }: { formData: TeamFormData; update
 }
 
 function PaymentStep({ onDevBypass }: { onDevBypass?: () => void }) {
+  const { user } = useAuth();
   const isDevelopment = import.meta.env.DEV;
+  const isReplitEmployee = user?.email && (user.email.endsWith('@repl.it') || user.email.endsWith('@replit.com'));
+  const showDevBypass = (isDevelopment || isReplitEmployee) && onDevBypass;
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -283,7 +287,7 @@ function PaymentStep({ onDevBypass }: { onDevBypass?: () => void }) {
         <h1 className="text-3xl font-bold mb-2">Enter payment information</h1>
       </div>
 
-      {isDevelopment && onDevBypass && (
+      {showDevBypass && (
         <div className="mb-6">
           <Card className="border-amber-200 bg-amber-50">
             <CardContent className="p-4">
