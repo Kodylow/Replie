@@ -111,65 +111,23 @@ A feature-complete clone of Replit's workspace interface, built for prototyping 
 └── design_guidelines.md    # UI/UX design principles
 ```
 
-## 🚀 Installation & Setup
+## 🚀 Run on Replit (Recommended)
 
-### Prerequisites
-- Node.js 20+ installed
-- Access to a PostgreSQL database
-- Replit account for authentication
-- OpenAI API key (optional, for AI features)
-- Google Cloud Storage bucket (optional, for file storage)
+No local setup is required. The project is designed to run entirely on Replit.
 
-### Environment Variables
+### Steps
 
-Create a `.env` file in the root directory:
-
-```bash
-# Database
-DATABASE_URL=postgresql://username:password@host:port/database
-
-# Authentication (Replit OAuth)
-REPLIT_CLIENT_ID=your_replit_client_id
-REPLIT_CLIENT_SECRET=your_replit_client_secret
-
-# AI Features (Optional)
-OPENAI_API_KEY=your_openai_api_key
-
-# Object Storage (Optional)
-PUBLIC_OBJECT_SEARCH_PATHS=/bucket-name/public
-PRIVATE_OBJECT_DIR=/bucket-name/.private
-
-# Session Management
-SESSION_SECRET=your_session_secret
-```
-
-### Installation Steps
-
-1. **Clone or Remix the project**
-   ```bash
-   git clone https://github.com/your-repo/replit-workspace-clone.git
-   cd replit-workspace-clone
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Set up the database**
-   ```bash
-   # Push the schema to your database
-   npm run db:push
-   ```
-
-4. **Start the development server**
-   ```bash
-   npm run dev
-   ```
-
-5. **Access the application**
-   - Open [http://localhost:5000](http://localhost:5000) in your browser
-   - The app will automatically handle both frontend and backend routing
+1. **[Remix this project →](https://replit.com/@kodylow/ReplitPrototyper?v=1)**
+2. **Set Secrets** (Environment Variables) in Replit:
+   - `DATABASE_URL` (Replit-provided Postgres or your connection string)
+   - `SESSION_SECRET`
+   - Optional: `OPENAI_API_KEY`, `PUBLIC_OBJECT_SEARCH_PATHS`, `PRIVATE_OBJECT_DIR`, `REPLIT_CLIENT_ID`, `REPLIT_CLIENT_SECRET`
+3. **Initialize the database**
+   - Open the Shell and run: `npm run db:push`
+4. **Run the app**
+   - Click the Run button in Replit (or run `npm run dev` in the Shell)
+5. **Open the app**
+   - Use the Replit Webview or the provided URL (e.g., `https://<your-repl>.replit.app`)
 
 ## 🔧 Development Workflow
 
@@ -225,30 +183,12 @@ OpenAI-powered features enhance the development experience:
 - **Code assistance** - Context-aware help within the editor
 - **Smart templates** - AI-suggested project structures and boilerplates
 
-## 🚀 Deployment
-
-### Production Deployment
-1. **Build the application**
-   ```bash
-   npm run build
-   ```
-
-2. **Set production environment variables**
-   - Configure database connection
-   - Set up object storage
-   - Configure authentication secrets
-
-3. **Start the production server**
-   ```bash
-   npm start
-   ```
-
-### Replit Deployment
-This project is optimized for deployment on Replit:
-- **Automatic setup** - Environment variables managed by Replit
-- **Built-in database** - PostgreSQL provided by Replit
-- **Object storage** - Google Cloud Storage integration
-- **Authentication** - Replit OAuth built-in
+## 🚀 Deployment on Replit
+This project is optimized for Replit:
+- **Automatic setup** - Manage Secrets in Replit
+- **Built-in database** - Use Replit’s Postgres or your own
+- **Object storage** - Optional Google Cloud Storage integration
+- **Authentication** - Replit OAuth supported
 
 ## 🤝 Contributing
 

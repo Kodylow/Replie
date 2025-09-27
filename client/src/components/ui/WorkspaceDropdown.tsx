@@ -24,15 +24,17 @@ export function WorkspaceDropdown({ onCreateTeam }: WorkspaceDropdownProps) {
       <DropdownMenuTrigger asChild>
         <Button 
           variant="ghost" 
-          className="flex items-center gap-2 text-sm font-medium"
+          className="flex items-center gap-2 text-sm font-medium bg-sidebar hover:bg-sidebar-accent rounded-full px-3 py-2 h-8"
           data-testid="button-workspace-dropdown"
         >
-          <div className="w-6 h-6 bg-primary rounded-sm flex items-center justify-center">
+          <div className="w-5 h-5 bg-primary rounded-sm flex items-center justify-center">
             <span className="text-primary-foreground font-bold text-xs">
               {currentWorkspace?.name.charAt(0).toUpperCase() || 'R'}
             </span>
           </div>
-          {currentWorkspace?.name || 'Loading workspace...'}
+          {currentWorkspace?.type === 'personal' 
+            ? 'Personal Workspace' 
+            : `${currentWorkspace?.name} Workspace` || 'Loading workspace...'}
           <ChevronDown className="w-4 h-4" />
         </Button>
       </DropdownMenuTrigger>
@@ -50,7 +52,9 @@ export function WorkspaceDropdown({ onCreateTeam }: WorkspaceDropdownProps) {
                   {workspace.name.charAt(0).toUpperCase()}
                 </span>
               </div>
-              {workspace.name}
+              {workspace.type === 'personal' 
+                ? 'Personal Workspace' 
+                : `${workspace.name} Workspace`}
               <span className="text-muted-foreground text-xs ml-auto">({workspace.type})</span>
             </div>
           </DropdownMenuItem>

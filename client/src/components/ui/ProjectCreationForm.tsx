@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Paperclip, Link, ChevronDown } from 'lucide-react';
+import { Paperclip, Link, ChevronDown, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { CategorySelector } from './CategorySelector';
@@ -40,18 +40,22 @@ export function ProjectCreationForm({ onProjectCreated }: ProjectCreationFormPro
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-4">
       {/* Project Idea Input */}
-      <div className="relative border border-border rounded-lg bg-background focus-within:border-primary">
-        <Textarea
-          placeholder="Describe the idea you want to build..."
-          value={projectIdea}
-          onChange={(e) => setProjectIdea(e.target.value)}
-          className="min-h-[100px] resize-none border-0 bg-transparent text-base focus-visible:ring-0 p-4"
-          data-testid="input-project-idea"
-        />
-        
-        {/* Bottom Controls */}
+      <div className="rounded-lg bg-background">
+        <div className="border border-border rounded-lg overflow-hidden focus-within:border-primary">
+          <Textarea
+            placeholder="Describe the idea you want to build..."
+            value={projectIdea}
+            onChange={(e) => setProjectIdea(e.target.value)}
+            className="min-h-[100px] resize-none border-0 bg-transparent text-base focus-visible:ring-0 p-4 rounded-none"
+            data-testid="input-project-idea"
+          />
+        </div>
+      </div>
+
+      {/* Bottom Controls */}
+      <div className="rounded-lg bg-background">
         <div className="flex items-center justify-between px-3 py-2">
           <div className="flex items-center gap-3">
             <Button 
@@ -97,14 +101,17 @@ export function ProjectCreationForm({ onProjectCreated }: ProjectCreationFormPro
                   Creating...
                 </>
               ) : (
-                'Start chat'
+                <>
+                  <Send className="w-4 h-4" />
+                  Start chat
+                </>
               )}
             </Button>
             
           </div>
           
         </div>
-        {/* Inline Category Selector (inside bordered container) */}
+        {/* Inline Category Selector (separate from bordered input) */}
         <div className="px-3 pb-2">
           <CategorySelector 
             selectedCategory={selectedCategory}

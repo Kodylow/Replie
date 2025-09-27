@@ -147,7 +147,7 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
                 </svg>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" side="right" className="w-72">
+            <DropdownMenuContent align="start" side="right" className="w-48">
               <DropdownMenuGroup>
                 <DropdownMenuItem onClick={() => setLocation('/account')}>
                   <Settings className="w-4 h-4 mr-2" />
@@ -188,17 +188,56 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
                 </DropdownMenuItem>
               ))}
               <DropdownMenuSeparator />
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                  <Palette className="w-4 h-4 mr-2" />
-                  Theme
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  <DropdownMenuItem onClick={() => document.documentElement.classList.remove('dark')}>Light</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => document.documentElement.classList.add('dark')}>Dark</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => document.documentElement.classList.toggle('dark')}>Toggle</DropdownMenuItem>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
+              <DropdownMenuItem
+                onClick={() => {
+                  document.documentElement.classList.toggle('dark');
+                }}
+                className="flex items-center"
+              >
+                <Palette className="w-4 h-4 mr-2" />
+                Theme
+                <span className="ml-auto flex gap-1">
+                  <button
+                    type="button"
+                    aria-label="Light theme"
+                    className="hover:opacity-80"
+                    onClick={e => {
+                      e.stopPropagation();
+                      document.documentElement.classList.remove('dark');
+                    }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-yellow-400">
+                      <circle cx="12" cy="12" r="5" fill="currentColor"/>
+                      <g stroke="currentColor" strokeWidth="2">
+                        <line x1="12" y1="1" x2="12" y2="3"/>
+                        <line x1="12" y1="21" x2="12" y2="23"/>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                        <line x1="1" y1="12" x2="3" y2="12"/>
+                        <line x1="21" y1="12" x2="23" y2="12"/>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                      </g>
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Dark theme"
+                    className="hover:opacity-80"
+                    onClick={e => {
+                      e.stopPropagation();
+                      document.documentElement.classList.add('dark');
+                    }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-gray-700 dark:text-gray-200">
+                      <path
+                        d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 1 0 9.79 9.79z"
+                        fill="currentColor"
+                      />
+                    </svg>
+                  </button>
+                </span>
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setLocation('/help')}>
                 <HelpCircle className="w-4 h-4 mr-2" />
                 Help
