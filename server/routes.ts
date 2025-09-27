@@ -47,6 +47,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastName: claims.last_name,
           profileImageUrl: claims.profile_image_url,
         });
+        
+        // Ensure user has a personal workspace
+        const userWorkspaces = await storage.getUserWorkspaces(userId);
+        if (userWorkspaces.length === 0) {
+          console.log('👤 Creating personal workspace for new user:', userId);
+          const personalWorkspace = await storage.createWorkspace({
+            name: `${claims.first_name || "User"}'s Workspace`,
+            type: 'personal',
+            slug: 'personal',
+            description: 'Personal workspace',
+          });
+          
+          // Add user as workspace member
+          await storage.addWorkspaceMember({
+            workspaceId: personalWorkspace.id,
+            userId: userId,
+            role: 'owner',
+          });
+          console.log('✅ Personal workspace created:', personalWorkspace.id);
+        }
+      } else {
+        // Check if existing user has any workspaces, create personal if none
+        const userWorkspaces = await storage.getUserWorkspaces(userId);
+        if (userWorkspaces.length === 0) {
+          console.log('👤 Creating missing personal workspace for existing user:', userId);
+          const personalWorkspace = await storage.createWorkspace({
+            name: `${user.firstName}'s Workspace`,
+            type: 'personal',
+            slug: 'personal',
+            description: 'Personal workspace',
+          });
+          
+          // Add user as workspace member
+          await storage.addWorkspaceMember({
+            workspaceId: personalWorkspace.id,
+            userId: userId,
+            role: 'owner',
+          });
+          console.log('✅ Personal workspace created for existing user:', personalWorkspace.id);
+        }
       }
       
       res.json(user);
@@ -1641,7 +1681,9 @@ Your role is to:
 3. Propose comprehensive project plans with tech stacks
 4. Guide them toward choosing between Design Mode or Build Mode
 
-Keep responses conversational, friendly, and focused on planning. Ask 2-3 clarifying questions before proposing a full plan. When you have enough information, provide a detailed plan and offer the choice between Design Mode (for prototyping) or Build Mode (for full development).`
+Keep responses conversational, friendly, and focused on planning. Ask 2-3 clarifying questions before proposing a full plan. When you have enough information, provide a detailed plan and offer the choice between Design Mode (for prototyping) or Build Mode (for full development).
+
+IMPORTANT: Respond in JSON format with a "response" field containing your message. Example: {"response": "Your message here"}`
         },
         ...messages.map((msg: any) => ({
           role: msg.role,
@@ -1656,15 +1698,34 @@ Keep responses conversational, friendly, and focused on planning. Ask 2-3 clarif
       // Get OpenAI response using latest model
       console.log('🤖 Planning API: Sending request to OpenAI with', conversationHistory.length, 'messages');
       // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+      // Note: gpt-5 only supports default temperature (1), custom temperature not supported
       const completion = await openai.chat.completions.create({
         model: 'gpt-5',
         messages: conversationHistory as any,
-        max_completion_tokens: 500,
-        temperature: 0.7,
+        max_completion_tokens: 1000,
+        response_format: { type: "json_object" }
       });
       console.log('✅ Planning API: Received OpenAI response');
+      console.log('🔍 Planning API: Full completion object:', JSON.stringify(completion, null, 2));
+      console.log('🔍 Planning API: Choices array length:', completion.choices?.length);
+      console.log('🔍 Planning API: First choice:', JSON.stringify(completion.choices[0], null, 2));
 
-      const assistantResponse = completion.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response. Please try again.";
+      let assistantResponse = "I'm sorry, I couldn't generate a response. Please try again.";
+      
+      try {
+        const rawContent = completion.choices[0]?.message?.content;
+        console.log('🔍 Planning API: Raw content:', rawContent);
+        
+        if (rawContent) {
+          const jsonResponse = JSON.parse(rawContent);
+          console.log('🔍 Planning API: Parsed JSON:', JSON.stringify(jsonResponse, null, 2));
+          assistantResponse = jsonResponse.response || assistantResponse;
+        }
+      } catch (parseError) {
+        console.log('❌ Planning API: JSON parse error:', parseError);
+        // Fall back to raw content if JSON parsing fails
+        assistantResponse = completion.choices[0]?.message?.content || assistantResponse;
+      }
       console.log('📝 Planning API: Assistant response length:', assistantResponse.length);
       console.log('📝 Planning API: Assistant response preview:', assistantResponse.substring(0, 200) + '...');
 
@@ -1700,12 +1761,14 @@ Keep responses conversational, friendly, and focused on planning. Ask 2-3 clarif
 
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.log('❌ Planning API: Validation error details:', JSON.stringify(error.errors, null, 2));
+        console.log('❌ Planning API: Request body was:', JSON.stringify(req.body, null, 2));
         return res.status(400).json({
           error: "Validation failed",
           details: error.errors
         });
       }
-      console.error("Error in planning chat:", error);
+      console.error("❌ Planning API: Unexpected error:", error);
       res.status(500).json({ error: "Failed to process chat message" });
     }
   });

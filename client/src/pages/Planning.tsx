@@ -77,11 +77,17 @@ export default function Planning() {
       console.log('📝 Planning: Workspace ID:', currentWorkspace?.id);
       console.log('💬 Planning: Conversation ID:', conversationId);
       
-      const response = await apiRequest('POST', '/api/chat/planning', {
+      const requestBody: any = {
         message,
-        conversationId,
         workspaceId: currentWorkspace?.id,
-      });
+      };
+      
+      // Only include conversationId if it has a value
+      if (conversationId) {
+        requestBody.conversationId = conversationId;
+      }
+      
+      const response = await apiRequest('POST', '/api/chat/planning', requestBody);
       
       console.log('📨 Planning: API response status:', response.status);
       const data = await response.json() as ChatResponse;
