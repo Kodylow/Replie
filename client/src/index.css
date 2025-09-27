@@ -129,66 +129,66 @@
   --opaque-button-border-intensity: 9;  /* In terms of percentages */
 
   /* Backgrounds applied on top of other backgrounds when hovered/active */
-  --elevate-1: rgba(255,255,255, .04);
-  --elevate-2: rgba(255,255,255, .09);
+  --elevate-1: rgba(255,255,255, .05);
+  --elevate-2: rgba(255,255,255, .10);
 
-  --background: 20 8% 8%;
+  --background: 232 21% 7%;
 
-  --foreground: 0 0% 95%;
+  --foreground: 223 17% 92%;
 
-  --border: 20 4% 22%;
+  --border: 227 11% 25%;
 
-  --card: 20 6% 12%;
+  --card: 229 17% 12%;
 
-  --card-foreground: 0 0% 95%;
+  --card-foreground: 223 17% 92%;
 
-  --card-border: 20 4% 25%;
+  --card-border: 227 11% 28%;
 
-  --sidebar: 20 5% 15%;
+  --sidebar: 230 15% 16%;
 
-  --sidebar-foreground: 0 0% 95%;
+  --sidebar-foreground: 223 17% 92%;
 
-  --sidebar-border: 20 4% 28%;
+  --sidebar-border: 227 11% 30%;
 
-  --sidebar-primary: 23 94% 49%;
+  --sidebar-primary: 210 100% 47%;
 
-  --sidebar-primary-foreground: 0 0% 98%;
+  --sidebar-primary-foreground: 223 17% 92%;
 
-  --sidebar-accent: 20 5% 20%;
+  --sidebar-accent: 230 15% 20%;
 
-  --sidebar-accent-foreground: 0 0% 85%;
+  --sidebar-accent-foreground: 212 11% 77%;
 
-  --sidebar-ring: 23 94% 49%;
+  --sidebar-ring: 210 100% 47%;
 
-  --popover: 20 5% 18%;
+  --popover: 229 17% 14%;
 
-  --popover-foreground: 0 0% 95%;
+  --popover-foreground: 223 17% 92%;
 
-  --popover-border: 20 4% 30%;
+  --popover-border: 227 11% 28%;
 
-  --primary: 23 94% 49%;
+  --primary: 210 100% 47%;
 
-  --primary-foreground: 0 0% 98%;
+  --primary-foreground: 223 17% 92%;
 
-  --secondary: 20 5% 22%;
+  --secondary: 227 11% 22%;
 
-  --secondary-foreground: 0 0% 85%;
+  --secondary-foreground: 212 11% 77%;
 
-  --muted: 20 4% 25%;
+  --muted: 227 11% 20%;
 
-  --muted-foreground: 0 0% 65%;
+  --muted-foreground: 212 11% 77%;
 
-  --accent: 20 4% 20%;
+  --accent: 227 11% 18%;
 
-  --accent-foreground: 0 0% 85%;
+  --accent-foreground: 212 11% 77%;
 
-  --destructive: 0 84% 60%;
+  --destructive: 0 80% 52%;
 
-  --destructive-foreground: 0 0% 98%;
+  --destructive-foreground: 223 17% 92%;
 
-  --input: 20 4% 30%;
-  --ring: 23 94% 49%;
-  --chart-1: 23 94% 75%;
+  --input: 227 11% 25%;
+  --ring: 210 100% 47%;
+  --chart-1: 210 100% 60%;
   --chart-2: 142 76% 45%;
   --chart-3: 271 81% 65%;
   --chart-4: 43 74% 60%;

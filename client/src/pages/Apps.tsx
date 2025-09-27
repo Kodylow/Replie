@@ -568,7 +568,10 @@ function AppsContent({ searchResults = [], isSearching }: AppsProps) {
                           <Settings className="w-4 h-4 mr-2" />
                           Settings
                         </DropdownMenuItem>
-                        <DropdownMenuItem data-testid={`menu-open-${app.id}`}>
+                        <DropdownMenuItem 
+                          onClick={() => setLocation(`/editor/${app.id}`)}
+                          data-testid={`menu-open-${app.id}`}
+                        >
                           <ExternalLink className="w-4 h-4 mr-2" />
                           Open
                         </DropdownMenuItem>

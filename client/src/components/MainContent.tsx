@@ -42,7 +42,7 @@ export default function MainContent({ searchResults, isSearching = false }: Main
     enabled: !!currentWorkspace
   })
 
-  // Use search results if searching, otherwise use all projects
+  // Use search results when searching, otherwise use all projects from current workspace
   const projects = isSearching ? (searchResults || []) : allProjects
 
 
@@ -91,9 +91,8 @@ export default function MainContent({ searchResults, isSearching = false }: Main
           <ProjectCreationForm onProjectCreated={() => {}} />
         </div>
         
-        {/* Recent Projects - Only show for team workspaces */}
-        {currentWorkspace?.type === 'team' && (
-          <div className="mb-8">
+        {/* Recent Apps */}
+        <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-foreground">
                 {isSearching ? 'Search Results' : 'Recent Apps'}
@@ -107,7 +106,7 @@ export default function MainContent({ searchResults, isSearching = false }: Main
             </button>
           </div>
           
-          {(isLoading && !isSearching) ? (
+            {(isLoading && !isSearching) ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="h-48 bg-muted rounded-lg animate-pulse" />
@@ -137,7 +136,7 @@ export default function MainContent({ searchResults, isSearching = false }: Main
             </div>
           )}
           </div>
-        )}
+        
       </div>
       
       {/* Edit Project Dialog */}
