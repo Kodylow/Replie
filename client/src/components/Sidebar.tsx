@@ -185,7 +185,12 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
         
         <div className="py-2">
           <p className="text-xs font-medium text-muted-foreground px-3 pb-2">Manage Organization</p>
-          <NavItem icon={Users} label="Members" onClick={() => console.log('Members clicked')} />
+          <NavItem 
+            icon={Users} 
+            label="Members" 
+            active={location === '/members'}
+            onClick={() => setLocation('/members')} 
+          />
           <NavItem icon={UserCheck} label="Groups" onClick={() => console.log('Groups clicked')} />
           <NavItem 
             icon={Settings} 

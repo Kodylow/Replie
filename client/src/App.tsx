@@ -11,6 +11,7 @@ import Projects from "@/pages/Projects";
 import Apps from "@/pages/Apps";
 import PublishedApps from "@/pages/PublishedApps";
 import Usage from "@/pages/Usage";
+import Members from "@/pages/Members";
 import NotFound from "@/pages/not-found";
 import ProjectDetail from "@/pages/ProjectDetail";
 import type { Project } from '@shared/schema'
@@ -29,6 +30,9 @@ function Router({ searchResults, isSearching }: { searchResults: Project[], isSe
       </Route>
       <Route path="/usage">
         <Usage searchResults={searchResults} isSearching={isSearching} />
+      </Route>
+      <Route path="/members">
+        <Members searchResults={searchResults} isSearching={isSearching} />
       </Route>
       <Route path="/project/:id" component={ProjectDetail} />
       <Route path="/">
