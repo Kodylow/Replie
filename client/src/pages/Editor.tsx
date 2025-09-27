@@ -185,7 +185,11 @@ export default function Editor() {
         <ResizablePanelGroup direction="horizontal" className="h-full">
           {/* AI Chat Panel - 30% */}
           <ResizablePanel defaultSize={30} minSize={25} maxSize={40}>
-            <AIChatPanel fileContents={fileContents} />
+            <AIChatPanel 
+              fileContents={fileContents} 
+              updateFileContent={updateFileContent}
+              appId={appId}
+            />
           </ResizablePanel>
 
           <ResizableHandle withHandle />
