@@ -73,7 +73,12 @@ function getDeploymentStatusDisplay(status: string | null) {
   }
 }
 
-export default function Projects() {
+interface ProjectsProps {
+  searchResults: Project[]
+  isSearching: boolean
+}
+
+export default function Projects({ searchResults, isSearching }: ProjectsProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -90,10 +95,12 @@ export default function Projects() {
     queryFn: () => fetch('/api/projects').then(res => res.json())
   })
 
-  // Filter projects based on search
-  const filteredProjects = projects.filter(project => 
-    project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (project.description && project.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  // Use search results from App-level if searching, otherwise filter locally
+  const filteredProjects = isSearching ? searchResults : (
+    projects.filter(project => 
+      project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (project.description && project.description.toLowerCase().includes(searchQuery.toLowerCase()))
+    )
   )
 
   // Create project mutation
@@ -226,7 +233,7 @@ export default function Projects() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-background">
+    <div className="h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div className="flex-1">
@@ -283,7 +290,7 @@ export default function Projects() {
               {filteredProjects.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                    {searchQuery ? 'No projects found matching your search.' : 'No projects yet. Create your first project!'}
+                    {(searchQuery || isSearching) ? 'No projects found matching your search.' : 'No projects yet. Create your first project!'}
                   </TableCell>
                 </TableRow>
               ) : (
