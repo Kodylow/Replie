@@ -338,3 +338,15 @@ export type AgentAction = z.infer<typeof agentActionSchema>;
 export type AgentDelegation = z.infer<typeof agentDelegationSchema>;
 export type AgentRequest = z.infer<typeof agentRequestSchema>;
 export type AgentResponse = z.infer<typeof agentResponseSchema>;
+
+// Git operations schemas
+export interface GitCommit {
+  sha: string;
+  message: string;
+  author: {
+    name: string;
+    email: string;
+  };
+  date: Date;
+  files: string[]; // list of changed files
+}
