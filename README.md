@@ -1,6 +1,6 @@
 # Replit Workspace Clone
 
-A pixel-perfect clone of the Replit workspace interface built with modern web technologies. This project recreates Replit's core functionality including project management, workspace-based multi-tenancy, and team collaboration features.
+A good-enough clone of Replit for proposing ideas and features.
 
 ## 🚀 Try It Live
 
@@ -10,9 +10,9 @@ A pixel-perfect clone of the Replit workspace interface built with modern web te
 
 Have ideas for improving Replit? Want to propose new features or changes?
 
-**[Remix this project →](https://replit.com/@kodylow/ReplitPrototyper?v=1#design_guidelines.md)**
+**[Remix this project →](https://replit.com/@kodylow/ReplitPrototyper?v=1)**
 
-Use the remix link to:
+Use the remix link to start a new 
 - Suggest new features for Replit
 - Propose UI/UX improvements
 - Experiment with different design approaches
