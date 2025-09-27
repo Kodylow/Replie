@@ -94,6 +94,9 @@ function AppContent() {
   const [isSearching, setIsSearching] = useState(false)
   const [mobileActiveTab, setMobileActiveTab] = useState<'apps' | 'create' | 'account'>('create')
 
+  // Check if we're on a special page that should bypass mobile tabs
+  const isSpecialPage = location === '/planning' || location.startsWith('/editor/') || location.startsWith('/project/') || location === '/import' || location === '/account'
+
   const handleSearchResults = (results: Project[]) => {
     setSearchResults(results)
     setIsSearching(true)
@@ -110,9 +113,10 @@ function AppContent() {
 
   // Mobile Layout
   if (isMobile) {
-    // Check if we're on a special page that should use the full router
-    console.log('Mobile layout - current location:', location)
-    if (location === '/planning' || location.startsWith('/editor/') || location.startsWith('/project/')) {
+    console.log('Mobile layout - current location:', location, 'isSpecialPage:', isSpecialPage)
+    
+    // If we're on a special page, show the full router without mobile tabs
+    if (isSpecialPage) {
       console.log('Mobile: Using full router for', location)
       return (
         <div className="h-screen flex flex-col bg-background">
@@ -123,6 +127,7 @@ function AppContent() {
       );
     }
 
+    // Otherwise, show the tab-based mobile layout
     return (
       <div className="h-screen flex flex-col bg-background">
         <MobileHeader />

@@ -159,7 +159,20 @@ export default function MobileCreateTab() {
                   onClick={() => {
                     // For now, navigate directly to planning without creating project
                     console.log('Navigating directly to planning')
-                    setLocation('/planning')
+                    try {
+                      setLocation('/planning')
+                      console.log('setLocation called successfully')
+                      // Fallback navigation if wouter fails
+                      setTimeout(() => {
+                        if (window.location.pathname !== '/planning') {
+                          console.log('Fallback: using window.location')
+                          window.location.href = '/planning'
+                        }
+                      }, 100)
+                    } catch (error) {
+                      console.error('Navigation error:', error)
+                      window.location.href = '/planning'
+                    }
                   }}
                   disabled={!projectIdea.trim()}
                   data-testid="mobile-start-chat-button"
