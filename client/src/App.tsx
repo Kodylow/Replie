@@ -111,7 +111,9 @@ function AppContent() {
   // Mobile Layout
   if (isMobile) {
     // Check if we're on a special page that should use the full router
+    console.log('Mobile layout - current location:', location)
     if (location === '/planning' || location.startsWith('/editor/') || location.startsWith('/project/')) {
+      console.log('Mobile: Using full router for', location)
       return (
         <div className="h-screen flex flex-col bg-background">
           <div className="flex-1 overflow-hidden">
