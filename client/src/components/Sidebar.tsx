@@ -1,7 +1,10 @@
-import { Search, Home, FolderOpen, Package, Globe, Users, UserCheck, Settings, BookOpen, ExternalLink, Plus, Upload } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Search, Home, FolderOpen, Package, Globe, Users, UserCheck, Settings, BookOpen, ExternalLink, Plus, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
+import { useQuery } from '@tanstack/react-query'
+import type { Project } from '@shared/schema'
 
 interface NavItemProps {
   icon: React.ComponentType<any>
@@ -40,7 +43,56 @@ function ActionButton({ icon: Icon, label, onClick }: NavItemProps) {
   )
 }
 
-export default function Sidebar() {
+interface SidebarProps {
+  onSearchResults?: (results: Project[]) => void
+  onClearSearch?: () => void
+}
+
+export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps) {
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isSearching, setIsSearching] = useState(false)
+
+  // Search projects query
+  const { data: searchResults, isLoading: searchLoading } = useQuery<Project[]>({
+    queryKey: ['/api/projects/search', searchQuery],
+    queryFn: async () => {
+      if (!searchQuery.trim()) return []
+      const response = await fetch(`/api/projects/search/${encodeURIComponent(searchQuery.trim())}`)
+      if (!response.ok) throw new Error('Search failed')
+      return response.json()
+    },
+    enabled: !!searchQuery.trim(),
+  })
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value)
+    if (value.trim()) {
+      setIsSearching(true)
+      if (searchResults && onSearchResults) {
+        onSearchResults(searchResults)
+      }
+    } else {
+      setIsSearching(false)
+      if (onClearSearch) {
+        onClearSearch()
+      }
+    }
+  }
+
+  const clearSearch = () => {
+    setSearchQuery('')
+    setIsSearching(false)
+    if (onClearSearch) {
+      onClearSearch()
+    }
+  }
+
+  // Update search results when query data changes
+  useEffect(() => {
+    if (isSearching && searchResults && onSearchResults) {
+      onSearchResults(searchResults)
+    }
+  }, [searchResults, isSearching, onSearchResults])
   return (
     <div className="w-64 h-screen bg-sidebar border-r border-sidebar-border flex flex-col">
       {/* Logo */}
@@ -58,11 +110,35 @@ export default function Sidebar() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search"
-            className="pl-10 bg-sidebar border-sidebar-border"
+            placeholder="Search projects..."
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="pl-10 pr-8 bg-sidebar border-sidebar-border"
             data-testid="input-search"
           />
+          {(searchQuery || isSearching) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearSearch}
+              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-sidebar-accent"
+              data-testid="button-clear-search"
+            >
+              <X className="w-3 h-3" />
+            </Button>
+          )}
         </div>
+        {isSearching && (
+          <div className="mt-2 text-xs text-muted-foreground px-2">
+            {searchLoading ? (
+              'Searching...'
+            ) : searchResults ? (
+              `${searchResults.length} result${searchResults.length !== 1 ? 's' : ''} found`
+            ) : (
+              'No results found'
+            )}
+          </div>
+        )}
       </div>
 
       {/* Create App */}

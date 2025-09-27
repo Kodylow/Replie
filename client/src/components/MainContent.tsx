@@ -56,7 +56,12 @@ function formatTimeAgo(date: Date): string {
   }
 }
 
-export default function MainContent() {
+interface MainContentProps {
+  searchResults?: Project[]
+  isSearching?: boolean
+}
+
+export default function MainContent({ searchResults, isSearching = false }: MainContentProps) {
   const [projectIdea, setProjectIdea] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('web')
   const [editingProject, setEditingProject] = useState<Project | null>(null)
@@ -64,10 +69,13 @@ export default function MainContent() {
   const { toast } = useToast()
 
   // Fetch projects
-  const { data: projects = [], isLoading, refetch } = useQuery<Project[]>({
+  const { data: allProjects = [], isLoading, refetch } = useQuery<Project[]>({
     queryKey: ['/api/projects'],
     queryFn: () => fetch('/api/projects').then(res => res.json())
   })
+
+  // Use search results if searching, otherwise use all projects
+  const projects = isSearching ? (searchResults || []) : allProjects
 
   // Create project mutation
   const createProjectMutation = useMutation({
@@ -82,6 +90,7 @@ export default function MainContent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/projects'] })
+      queryClient.invalidateQueries({ queryKey: ['/api/projects/search'], exact: false })
       setProjectIdea('')
       toast({
         title: 'Project created!',
@@ -111,6 +120,7 @@ export default function MainContent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/projects'] })
+      queryClient.invalidateQueries({ queryKey: ['/api/projects/search'], exact: false })
       toast({
         title: 'Project updated!',
         description: 'Your project has been updated successfully.'
@@ -136,6 +146,7 @@ export default function MainContent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/projects'] })
+      queryClient.invalidateQueries({ queryKey: ['/api/projects/search'], exact: false })
       setDeletingProject(null)
       toast({
         title: 'Project deleted!',
@@ -229,7 +240,9 @@ export default function MainContent() {
         {/* Recent Apps */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-foreground">Recent Apps</h2>
+            <h2 className="text-lg font-semibold text-foreground">
+              {isSearching ? 'Search Results' : 'Recent Apps'}
+            </h2>
             <Button 
               variant="ghost" 
               size="sm"
@@ -242,7 +255,7 @@ export default function MainContent() {
             </Button>
           </div>
           
-          {isLoading ? (
+          {(isLoading && !isSearching) ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="h-48 bg-muted rounded-lg animate-pulse" />
