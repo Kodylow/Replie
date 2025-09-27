@@ -113,11 +113,8 @@ function AppContent() {
 
   // Mobile Layout
   if (isMobile) {
-    console.log('Mobile layout - current location:', location, 'isSpecialPage:', isSpecialPage)
-    
     // If we're on a special page, show the full router without mobile tabs
     if (isSpecialPage) {
-      console.log('Mobile: Using full router for', location)
       return (
         <div className="h-screen flex flex-col bg-background">
           <div className="flex-1 overflow-hidden">

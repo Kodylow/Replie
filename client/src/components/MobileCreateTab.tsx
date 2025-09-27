@@ -54,9 +54,7 @@ export default function MobileCreateTab() {
         description: 'Your new project has been created successfully.'
       })
       // Navigate to planning page for full experience
-      console.log('About to navigate to planning page')
       setLocation('/planning')
-      console.log('Navigation called for /planning')
     },
     onError: (error) => {
       console.error('Error creating project:', error)
@@ -156,25 +154,8 @@ export default function MobileCreateTab() {
                 
                 <Button
                   size="sm"
-                  onClick={() => {
-                    // For now, navigate directly to planning without creating project
-                    console.log('Navigating directly to planning')
-                    try {
-                      setLocation('/planning')
-                      console.log('setLocation called successfully')
-                      // Fallback navigation if wouter fails
-                      setTimeout(() => {
-                        if (window.location.pathname !== '/planning') {
-                          console.log('Fallback: using window.location')
-                          window.location.href = '/planning'
-                        }
-                      }, 100)
-                    } catch (error) {
-                      console.error('Navigation error:', error)
-                      window.location.href = '/planning'
-                    }
-                  }}
-                  disabled={!projectIdea.trim()}
+                  onClick={handleStartChat}
+                  disabled={!projectIdea.trim() || createProjectMutation.isPending}
                   data-testid="mobile-start-chat-button"
                   className="flex items-center gap-2 h-8"
                 >
