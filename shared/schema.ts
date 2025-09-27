@@ -73,6 +73,13 @@ export const apps = pgTable("apps", {
   backgroundColor: text("background_color").notNull().default('bg-gradient-to-br from-blue-500 to-purple-600'),
   objectStoragePath: text("object_storage_path"), // Base path in object storage for this app's files
   filesInitialized: text("files_initialized").notNull().default('false'), // 'true' or 'false' as text
+  // Git repository tracking fields
+  gitInitialized: text("git_initialized").notNull().default('false'), // 'true' or 'false' as text to track if Git repo is set up
+  gitBranch: text("git_branch").notNull().default('main'), // current branch name
+  lastCommitSha: text("last_commit_sha"), // latest commit hash (nullable)
+  lastCommitMessage: text("last_commit_message"), // latest commit message (nullable)
+  lastCommitAuthor: text("last_commit_author"), // author of the latest commit (nullable)
+  lastCommitDate: timestamp("last_commit_date"), // when the last commit was made (nullable)
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
   updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
 });
