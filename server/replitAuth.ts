@@ -57,13 +57,38 @@ function updateUserSession(
 async function upsertUser(
   claims: any,
 ) {
+  const userId = claims["sub"];
+  const firstName = claims["first_name"] || "User";
+  
+  // Create or update the user
   await storage.upsertUser({
-    id: claims["sub"],
+    id: userId,
     email: claims["email"],
-    firstName: claims["first_name"],
+    firstName: firstName,
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
   });
+  
+  // Check if user already has a personal workspace
+  const userWorkspaces = await storage.getUserWorkspaces(userId);
+  const hasPersonalWorkspace = userWorkspaces.some(w => w.type === 'personal');
+  
+  // Create personal workspace if it doesn't exist
+  if (!hasPersonalWorkspace) {
+    const personalWorkspaceName = `${firstName}'s Workspace`;
+    const personalWorkspace = await storage.createWorkspace({
+      name: personalWorkspaceName,
+      type: 'personal',
+      slug: `${firstName.toLowerCase()}-workspace`,
+    });
+    
+    // Add user as owner of their personal workspace
+    await storage.addWorkspaceMember({
+      workspaceId: personalWorkspace.id,
+      userId: userId,
+      role: 'owner',
+    });
+  }
 }
 
 export async function setupAuth(app: Express) {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from 'wouter'
-import { Search, Home, FolderOpen, Package, Globe, Users, UserCheck, Settings, BookOpen, ExternalLink, Plus, Upload, Menu, BarChart3, LogOut } from 'lucide-react'
+import { Search, Home, FolderOpen, Package, Globe, Users, UserCheck, Settings, BookOpen, ExternalLink, Plus, Upload, BarChart3, LogOut, Bell, User as UserIcon, TerminalSquare, HelpCircle, Palette } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -8,6 +8,18 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
 import type { Project } from '@shared/schema'
 import { CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command'
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuLabel, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger,
+  DropdownMenuGroup,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+} from '@/components/ui/dropdown-menu'
 
 interface NavItemProps {
   icon: React.ComponentType<any>
@@ -35,13 +47,13 @@ function NavItem({ icon: Icon, label, active = false, onClick }: NavItemProps) {
 function ActionButton({ icon: Icon, label, onClick }: NavItemProps) {
   return (
     <Button
-      variant="ghost"
+      variant="outline"
       size="sm"
       onClick={onClick}
-      className="flex items-center justify-start w-full px-3 py-2 h-auto text-sm font-normal"
+      className="w-full justify-start h-8 text-sm font-medium gap-2"
       data-testid={`action-${label.toLowerCase().replace(/\s+/g, '-')}`}
     >
-      <Icon className="w-4 h-4 mr-3" />
+      <Icon className="w-4 h-4" />
       {label}
     </Button>
   )
@@ -105,19 +117,84 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
       {/* Header */}
       <div className="flex items-center justify-between" style={{ paddingLeft: '6px', paddingRight: '8px', paddingTop: '12px', paddingBottom: '12px' }}>
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 hover:bg-sidebar-accent"
-            aria-label="Toggle sidebar"
-            data-testid="button-sidebar-toggle"
-          >
-            <Menu className="w-4 h-4" />
-          </Button>
-          <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">R</span>
-          </div>
-          <span className="font-semibold text-sidebar-foreground">Replit</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-md p-0 hover:bg-sidebar-accent"
+                aria-label="Open navigation menu"
+                data-testid="button-logo-menu"
+              >
+                <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ backgroundColor: '#F26207' }}>
+                  <span className="text-white text-[11px] font-bold">R</span>
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="right" className="w-72">
+              <DropdownMenuGroup>
+                <DropdownMenuItem onClick={() => setLocation('/account')}>
+                  <Settings className="w-4 h-4 mr-2" />
+                  Account
+                  <span className="ml-auto text-xs text-[#F26207]">Core</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLocation('/profile')}>
+                  <UserIcon className="w-4 h-4 mr-2" />
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLocation('/notifications')}>
+                  <Bell className="w-4 h-4 mr-2" />
+                  Notifications
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => console.log('Create Team clicked')}>
+                  <Users className="w-4 h-4 mr-2" />
+                  Create Team
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLocation('/clui')}>
+                  <TerminalSquare className="w-4 h-4 mr-2" />
+                  CLUI
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Switch Workspace</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => setLocation('/projects')}>
+                <Avatar className="h-4 w-4 mr-2">
+                  <AvatarImage src="" alt="Personal" />
+                  <AvatarFallback className="text-[10px]">P</AvatarFallback>
+                </Avatar>
+                Personal
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setLocation('/projects')}>
+                <Avatar className="h-4 w-4 mr-2">
+                  <AvatarImage src="" alt="Replit - Demo" />
+                  <AvatarFallback className="text-[10px]">RD</AvatarFallback>
+                </Avatar>
+                Replit - Demo
+                <span className="ml-auto text-xs text-muted-foreground">Admin</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Palette className="w-4 h-4 mr-2" />
+                  Theme
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={() => document.documentElement.classList.remove('dark')}>Light</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => document.documentElement.classList.add('dark')}>Dark</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => document.documentElement.classList.toggle('dark')}>Toggle</DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuItem onClick={() => setLocation('/help')}>
+                <HelpCircle className="w-4 h-4 mr-2" />
+                Help
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => (window.location.href = '/api/logout')} className="text-destructive focus:text-destructive">
+                <LogOut className="w-4 h-4 mr-2" />
+                Log out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <div className="flex items-center gap-1">
           <Button

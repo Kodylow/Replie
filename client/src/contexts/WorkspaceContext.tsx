@@ -44,20 +44,30 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     retry: false,
   });
 
-  // Set default workspace when workspaces load
+  // Set default workspace when workspaces load and validate current workspace
   useEffect(() => {
-    if (workspaces.length > 0 && !currentWorkspace) {
-      // Try to get workspace from localStorage first
-      const savedWorkspaceId = localStorage.getItem('currentWorkspaceId');
-      const savedWorkspace = savedWorkspaceId 
-        ? workspaces.find(w => w.id === savedWorkspaceId)
-        : null;
+    if (workspaces.length > 0) {
+      // Check if current workspace still exists in the fetched list
+      const isCurrentWorkspaceValid = currentWorkspace && 
+        workspaces.some(w => w.id === currentWorkspace.id);
       
-      // Use saved workspace if found, otherwise use first workspace
-      const defaultWorkspace = savedWorkspace || workspaces[0];
-      setCurrentWorkspace(defaultWorkspace);
+      if (!isCurrentWorkspaceValid) {
+        // Current workspace is invalid or doesn't exist
+        // Try to get workspace from localStorage first
+        const savedWorkspaceId = localStorage.getItem('currentWorkspaceId');
+        const savedWorkspace = savedWorkspaceId 
+          ? workspaces.find(w => w.id === savedWorkspaceId)
+          : null;
+        
+        // Use saved workspace if found and valid, otherwise use first workspace
+        const defaultWorkspace = savedWorkspace || workspaces[0];
+        setCurrentWorkspace(defaultWorkspace);
+      }
+    } else {
+      // No workspaces available, clear current workspace
+      setCurrentWorkspace(null);
     }
-  }, [workspaces, currentWorkspace]);
+  }, [workspaces]);
 
   // Save current workspace to localStorage when it changes
   useEffect(() => {
