@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from 'wouter'
-import { Search, Home, FolderOpen, Package, Globe, Users, UserCheck, Settings, BookOpen, ExternalLink, Plus, Upload, X, Menu, BarChart3, LogOut } from 'lucide-react'
+import { Search, Home, FolderOpen, Package, Globe, Users, UserCheck, Settings, BookOpen, ExternalLink, Plus, Upload, Menu, BarChart3, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
 import type { Project } from '@shared/schema'
+import { CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command'
 
 interface NavItemProps {
   icon: React.ComponentType<any>
@@ -57,6 +57,7 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
   const [location] = useLocation()
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
+  const [isCommandOpen, setIsCommandOpen] = useState(false)
 
   // Search projects query
   const { data: searchResults, isLoading: searchLoading } = useQuery<Project[]>({
@@ -101,59 +102,38 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
   }, [searchResults, isSearching, onSearchResults])
   return (
     <div className="w-64 h-screen bg-sidebar border-r border-sidebar-border flex flex-col">
-      {/* Logo */}
+      {/* Header */}
       <div className="flex items-center justify-between" style={{ paddingLeft: '6px', paddingRight: '8px', paddingTop: '12px', paddingBottom: '12px' }}>
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 hover:bg-sidebar-accent"
+            aria-label="Toggle sidebar"
+            data-testid="button-sidebar-toggle"
+          >
+            <Menu className="w-4 h-4" />
+          </Button>
           <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
             <span className="text-primary-foreground font-bold text-sm">R</span>
           </div>
           <span className="font-semibold text-sidebar-foreground">Replit</span>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 hover:bg-sidebar-accent"
-          aria-label="Toggle sidebar"
-          data-testid="button-sidebar-toggle"
-        >
-          <Menu className="w-4 h-4" />
-        </Button>
-      </div>
-
-      {/* Search */}
-      <div className="px-4 pb-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search projects..."
-            value={searchQuery}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="pl-10 pr-8 bg-sidebar border-sidebar-border"
-            data-testid="input-search"
-          />
-          {(searchQuery || isSearching) && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearSearch}
-              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-sidebar-accent"
-              data-testid="button-clear-search"
-            >
-              <X className="w-3 h-3" />
-            </Button>
-          )}
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 hover:bg-sidebar-accent"
+            aria-label="Open search"
+            data-testid="button-open-search"
+            onClick={() => {
+              setIsCommandOpen(true)
+              setIsSearching(true)
+            }}
+          >
+            <Search className="w-4 h-4" />
+          </Button>
         </div>
-        {isSearching && (
-          <div className="mt-2 text-xs text-muted-foreground px-2">
-            {searchLoading ? (
-              'Searching...'
-            ) : searchResults ? (
-              `${searchResults.length} result${searchResults.length !== 1 ? 's' : ''} found`
-            ) : (
-              'No results found'
-            )}
-          </div>
-        )}
       </div>
 
       {/* Create App */}
@@ -230,6 +210,46 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
 
       {/* User Profile */}
       <UserProfile />
+
+      {/* Command Search Modal */}
+      <CommandDialog
+        open={isCommandOpen}
+        onOpenChange={(open) => {
+          setIsCommandOpen(open)
+          if (!open) {
+            clearSearch()
+          }
+        }}
+      >
+        <CommandInput
+          placeholder="Search Apps in Replit - Demo"
+          value={searchQuery}
+          onValueChange={handleSearchChange}
+        />
+        <CommandList>
+          {searchLoading ? (
+            <CommandEmpty>Searching...</CommandEmpty>
+          ) : !searchResults || searchResults.length === 0 ? (
+            <CommandEmpty>No results found.</CommandEmpty>
+          ) : (
+            <CommandGroup heading="Results">
+              {searchResults.map((project) => (
+                <CommandItem
+                  key={project.id}
+                  value={project.title}
+                  onSelect={() => {
+                    setIsCommandOpen(false)
+                    setLocation(`/project/${project.id}`)
+                    clearSearch()
+                  }}
+                >
+                  {project.title}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+        </CommandList>
+      </CommandDialog>
     </div>
   )
 }
