@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useLocation } from 'wouter'
 import { Search, Home, FolderOpen, Package, Globe, Users, UserCheck, Settings, BookOpen, ExternalLink, Plus, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -49,6 +50,8 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps) {
+  const [, setLocation] = useLocation()
+  const [location] = useLocation()
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
 
@@ -155,8 +158,18 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
 
       {/* Navigation */}
       <div className="flex-1 px-4 py-4 space-y-1">
-        <NavItem icon={Home} label="Home" active onClick={() => console.log('Home clicked')} />
-        <NavItem icon={FolderOpen} label="Projects" onClick={() => console.log('Projects clicked')} />
+        <NavItem 
+          icon={Home} 
+          label="Home" 
+          active={location === '/'} 
+          onClick={() => setLocation('/')} 
+        />
+        <NavItem 
+          icon={FolderOpen} 
+          label="Projects" 
+          active={location === '/projects'}
+          onClick={() => setLocation('/projects')} 
+        />
         <NavItem icon={Package} label="Apps" onClick={() => console.log('Apps clicked')} />
         <NavItem icon={Globe} label="Published apps" onClick={() => console.log('Published apps clicked')} />
         

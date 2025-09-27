@@ -16,6 +16,7 @@ export const projects = pgTable("projects", {
   category: text("category").notNull(), // 'web', 'data', 'game', 'general', 'agents'
   isPrivate: text("is_private").notNull().default('true'), // 'true' or 'false' as text
   backgroundColor: text("background_color").notNull().default('bg-gradient-to-br from-blue-500 to-purple-600'),
+  deploymentStatus: text("deployment_status"), // 'published', 'failed', null
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
   updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
 });

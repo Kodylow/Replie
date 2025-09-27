@@ -38,21 +38,24 @@ export class MemStorage implements IStorage {
         description: "Waiting for you",
         category: "web",
         isPrivate: "true",
-        backgroundColor: "bg-gradient-to-br from-orange-400 to-red-500"
+        backgroundColor: "bg-gradient-to-br from-orange-400 to-red-500",
+        deploymentStatus: "published"
       },
       {
         title: "StrikeAutoPilot",
         description: "Automated trading system",
         category: "data",
         isPrivate: "true",
-        backgroundColor: "bg-gradient-to-br from-gray-700 to-gray-900"
+        backgroundColor: "bg-gradient-to-br from-gray-700 to-gray-900",
+        deploymentStatus: "failed"
       },
       {
         title: "OmnicronPitch",
         description: "Pitch deck generator",
         category: "general",
         isPrivate: "true",
-        backgroundColor: "bg-gradient-to-br from-blue-500 to-purple-600"
+        backgroundColor: "bg-gradient-to-br from-blue-500 to-purple-600",
+        deploymentStatus: null
       }
     ];
     
@@ -99,6 +102,7 @@ export class MemStorage implements IStorage {
       description: insertProject.description ?? null,
       isPrivate: insertProject.isPrivate ?? 'true',
       backgroundColor: insertProject.backgroundColor ?? 'bg-gradient-to-br from-blue-500 to-purple-600',
+      deploymentStatus: insertProject.deploymentStatus ?? null,
       createdAt: now,
       updatedAt: now,
     };
