@@ -5,6 +5,7 @@ import { insertProjectSchema, insertAppSchema, insertWorkspaceSchema, insertWork
 import OpenAI from 'openai';
 import { ObjectStorageService, ObjectNotFoundError, objectStorageClient } from './objectStorage';
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { GitService } from './gitService';
 import { z } from "zod";
 import { Octokit } from '@octokit/rest';
 import multer from 'multer';
@@ -21,6 +22,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Initialize Object Storage Service
   const objectStorageService = new ObjectStorageService();
+
+  // Initialize Git Service
+  const gitService = new GitService();
 
   // Auth middleware setup
   await setupAuth(app);
@@ -704,7 +708,17 @@ document.addEventListener('DOMContentLoaded', function() {
       
       // Skip if already initialized
       if (app.filesInitialized === 'true') {
-        return res.json({ message: "App files already initialized" });
+        return res.json({ 
+          message: "App files already initialized",
+          gitStatus: {
+            gitInitialized: app.gitInitialized === 'true',
+            gitBranch: app.gitBranch,
+            lastCommitSha: app.lastCommitSha,
+            lastCommitMessage: app.lastCommitMessage,
+            lastCommitAuthor: app.lastCommitAuthor,
+            lastCommitDate: app.lastCommitDate
+          }
+        });
       }
       
       // Create object storage path for this app
@@ -726,10 +740,75 @@ document.addEventListener('DOMContentLoaded', function() {
           });
         }
         
-        // Update app record
+        // Update app record with file initialization
         await storage.initializeAppFiles(appId, appPath);
         
-        res.json({ message: "App files initialized successfully", objectStoragePath: appPath });
+        // Initialize Git repository
+        let gitStatus = {
+          gitInitialized: false,
+          gitBranch: 'main',
+          lastCommitSha: null as string | null,
+          lastCommitMessage: null as string | null,
+          lastCommitAuthor: null as string | null,
+          lastCommitDate: null as Date | null
+        };
+        
+        try {
+          // Extract user information for Git commits
+          const userClaims = req.user.claims;
+          const gitAuthor = {
+            name: userClaims.first_name && userClaims.last_name 
+              ? `${userClaims.first_name} ${userClaims.last_name}` 
+              : userClaims.name || 'User',
+            email: userClaims.email || 'user@example.com'
+          };
+          
+          // Initialize Git repository with starter files
+          const initialCommitSha = await gitService.initializeRepository(
+            appId,
+            appPath,
+            gitAuthor
+          );
+          
+          // Update git status
+          gitStatus = {
+            gitInitialized: true,
+            gitBranch: 'main',
+            lastCommitSha: initialCommitSha,
+            lastCommitMessage: 'Initial commit',
+            lastCommitAuthor: `${gitAuthor.name} <${gitAuthor.email}>`,
+            lastCommitDate: new Date()
+          };
+          
+          // Update app record with Git metadata
+          await storage.updateApp(appId, {
+            gitInitialized: 'true',
+            gitBranch: 'main',
+            lastCommitSha: initialCommitSha,
+            lastCommitMessage: 'Initial commit',
+            lastCommitAuthor: `${gitAuthor.name} <${gitAuthor.email}>`,
+            lastCommitDate: new Date()
+          });
+          
+          console.log(`Git repository initialized successfully for app ${appId} with commit ${initialCommitSha}`);
+        } catch (gitError) {
+          console.error(`Failed to initialize Git repository for app ${appId}:`, gitError);
+          
+          // Update app record to indicate Git initialization failed
+          await storage.updateApp(appId, {
+            gitInitialized: 'false',
+            gitBranch: 'main'
+          });
+          
+          // Git failure shouldn't prevent app file initialization from being successful
+          // Just log the error and continue
+        }
+        
+        res.json({ 
+          message: "App files initialized successfully", 
+          objectStoragePath: appPath,
+          gitStatus: gitStatus
+        });
       } catch (error) {
         console.error("Error initializing app files:", error);
         res.status(500).json({ error: "Failed to initialize app files" });
