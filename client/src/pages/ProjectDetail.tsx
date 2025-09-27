@@ -115,6 +115,49 @@ export default function ProjectDetail() {
     setShowDeleteDialog(false)
   }
 
+  // Create app from project and navigate to editor
+  const createAppMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/workspaces/${project?.workspaceId}/apps`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: project?.title || 'New App',
+          creator: 'user',
+        })
+      })
+      if (!response.ok) throw new Error('Failed to create app')
+      return response.json()
+    },
+    onSuccess: (newApp) => {
+      toast({
+        title: 'App created!',
+        description: 'Opening in editor...'
+      })
+      setLocation(`/editor/${newApp.id}`)
+    },
+    onError: (error) => {
+      console.error('Error creating app:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to create app. Please try again.',
+        variant: 'destructive'
+      })
+    }
+  })
+
+  const handleViewCode = () => {
+    if (project) {
+      createAppMutation.mutate()
+    }
+  }
+
+  const handleOpenProject = () => {
+    if (project) {
+      createAppMutation.mutate()
+    }
+  }
+
   const getCategoryColor = (category: string) => {
     const colors: { [key: string]: string } = {
       'web': 'bg-blue-500/10 text-blue-600 border-blue-500/20',
@@ -220,9 +263,15 @@ export default function ProjectDetail() {
                   </div>
                 </div>
               </div>
-              <Button variant="outline" size="sm" data-testid="button-open-project">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleOpenProject}
+                disabled={createAppMutation.isPending}
+                data-testid="button-open-project"
+              >
                 <ExternalLink className="w-4 h-4 mr-2" />
-                Open Project
+                {createAppMutation.isPending ? 'Creating...' : 'Open Project'}
               </Button>
             </div>
           </CardHeader>
@@ -291,9 +340,15 @@ export default function ProjectDetail() {
               <CardTitle className="text-lg">Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button variant="outline" className="w-full justify-start" data-testid="button-view-code">
+              <Button 
+                variant="outline" 
+                className="w-full justify-start" 
+                onClick={handleViewCode}
+                disabled={createAppMutation.isPending}
+                data-testid="button-view-code"
+              >
                 <FileText className="w-4 h-4 mr-2" />
-                View Code
+                {createAppMutation.isPending ? 'Creating...' : 'View Code'}
               </Button>
               <Button variant="outline" className="w-full justify-start" data-testid="button-project-settings">
                 <Edit2 className="w-4 h-4 mr-2" />

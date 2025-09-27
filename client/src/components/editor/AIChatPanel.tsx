@@ -217,13 +217,24 @@ export function AIChatPanel({ fileContents, updateFileContent, appId }: AIChatPa
           <div className="space-y-2">
             <label className="text-sm font-medium">Capabilities:</label>
             <div className="flex flex-wrap gap-1">
-              {availableAgents
-                .find(agent => agent.type === selectedAgent)
-                ?.capabilities.map((capability: string, index: number) => (
+              {(() => {
+                const agent = availableAgents.find(agent => agent.type === selectedAgent);
+                if (!agent?.capabilities) return null;
+                
+                // Convert capabilities object to array of capability names
+                const capabilityNames = Object.entries(agent.capabilities)
+                  .filter(([_, value]) => value === true)
+                  .map(([key, _]) => {
+                    // Convert camelCase to readable format
+                    return key.replace(/([A-Z])/g, ' $1').toLowerCase().replace(/^./, str => str.toUpperCase());
+                  });
+                
+                return capabilityNames.map((capability: string, index: number) => (
                   <Badge key={index} variant="secondary" className="text-xs">
                     {capability}
                   </Badge>
-                ))}
+                ));
+              })()}
             </div>
           </div>
         )}
