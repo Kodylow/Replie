@@ -11,6 +11,7 @@ import Projects from "@/pages/Projects";
 import Apps from "@/pages/Apps";
 import PublishedApps from "@/pages/PublishedApps";
 import Usage from "@/pages/Usage";
+import Analytics from "@/pages/Analytics";
 import Members from "@/pages/Members";
 import NotFound from "@/pages/not-found";
 import ProjectDetail from "@/pages/ProjectDetail";
@@ -30,6 +31,9 @@ function Router({ searchResults, isSearching }: { searchResults: Project[], isSe
       </Route>
       <Route path="/usage">
         <Usage searchResults={searchResults} isSearching={isSearching} />
+      </Route>
+      <Route path="/analytics">
+        <Analytics searchResults={searchResults} isSearching={isSearching} />
       </Route>
       <Route path="/members">
         <Members searchResults={searchResults} isSearching={isSearching} />

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from 'wouter'
-import { Search, Home, FolderOpen, Package, Globe, Users, UserCheck, Settings, BookOpen, ExternalLink, Plus, Upload, X, Menu } from 'lucide-react'
+import { Search, Home, FolderOpen, Package, Globe, Users, UserCheck, Settings, BookOpen, ExternalLink, Plus, Upload, X, Menu, BarChart3 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
@@ -206,6 +206,12 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
             label="Usage" 
             active={location === '/usage'}
             onClick={() => setLocation('/usage')} 
+          />
+          <NavItem 
+            icon={BarChart3} 
+            label="Analytics" 
+            active={location === '/analytics'}
+            onClick={() => setLocation('/analytics')} 
           />
           <NavItem icon={Settings} label="Profile" onClick={() => console.log('Profile clicked')} />
           <NavItem icon={Settings} label="Settings" onClick={() => console.log('Settings clicked')} />
