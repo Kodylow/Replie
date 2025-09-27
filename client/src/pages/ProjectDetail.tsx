@@ -141,7 +141,7 @@ export default function ProjectDetail() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="h-full">
         <div className="max-w-4xl mx-auto p-6">
           <div className="animate-pulse">
             <div className="h-8 bg-muted rounded w-1/3 mb-6"></div>
@@ -155,7 +155,7 @@ export default function ProjectDetail() {
 
   if (error || !project) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="h-full flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-foreground mb-4">Project Not Found</h1>
           <p className="text-muted-foreground mb-6">The project you're looking for doesn't exist or has been deleted.</p>
@@ -169,7 +169,7 @@ export default function ProjectDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-full overflow-auto">
       <div className="max-w-4xl mx-auto p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
