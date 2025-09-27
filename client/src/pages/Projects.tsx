@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useLocation } from 'wouter'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { Search, Plus, MoreHorizontal, ExternalLink, Settings, Trash2, Globe, Database, Gamepad2, Layers, Bot } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -79,6 +80,7 @@ interface ProjectsProps {
 }
 
 export default function Projects({ searchResults, isSearching }: ProjectsProps) {
+  const [, setLocation] = useLocation()
   const [searchQuery, setSearchQuery] = useState('')
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -211,6 +213,10 @@ export default function Projects({ searchResults, isSearching }: ProjectsProps) 
     setCreateDialogOpen(true)
   }
 
+  const handleOpenProject = (project: Project) => {
+    setLocation(`/project/${project.id}`)
+  }
+
   const handleSaveNewProject = () => {
     if (newProjectTitle.trim()) {
       const projectData: InsertProject = {
@@ -297,7 +303,7 @@ export default function Projects({ searchResults, isSearching }: ProjectsProps) 
                 filteredProjects.map((project) => {
                   const deploymentStatus = getDeploymentStatusDisplay(project.deploymentStatus)
                   return (
-                    <TableRow key={project.id} className="border-b border-border hover:bg-muted/50" data-testid={`row-project-${project.id}`}>
+                    <TableRow key={project.id} className="border-b border-border hover:bg-muted/50 cursor-pointer" onClick={() => handleOpenProject(project)} data-testid={`row-project-${project.id}`}>
                       <TableCell className="flex items-center gap-3 py-3">
                         <Avatar className="w-8 h-8">
                           <AvatarFallback className="bg-muted text-muted-foreground text-sm font-medium">
@@ -345,7 +351,7 @@ export default function Projects({ searchResults, isSearching }: ProjectsProps) 
                               <Settings className="w-4 h-4 mr-2" />
                               Settings
                             </DropdownMenuItem>
-                            <DropdownMenuItem data-testid={`menu-open-${project.id}`}>
+                            <DropdownMenuItem onClick={() => handleOpenProject(project)} data-testid={`menu-open-${project.id}`}>
                               <ExternalLink className="w-4 h-4 mr-2" />
                               Open
                             </DropdownMenuItem>
