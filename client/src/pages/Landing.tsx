@@ -16,10 +16,10 @@ export default function Landing() {
         </h1>
 
         <p className="text-muted-foreground mb-2">
-          This is a lightweight prototype of most of the logged in 
+          This is a lightweight prototype of most of the logged in features of the Replit (outside the workspace, working on it).
         </p>
         <p className="text-muted-foreground mb-8">
-          Customers can remix this project to suggest new features or changes.
+          Remix this project to suggest new features or changes.
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
