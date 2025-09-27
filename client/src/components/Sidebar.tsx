@@ -230,7 +230,7 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
 
       {/* Create App */}
       <div className="px-4 pb-4">
-        <ActionButton icon={Plus} label="Create App" onClick={() => console.log('Create app clicked')} />
+        <ActionButton icon={Plus} label="Create App" onClick={() => setLocation('/planning')} />
       </div>
 
       {/* Import */}

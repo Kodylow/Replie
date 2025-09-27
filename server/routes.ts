@@ -1,7 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertProjectSchema, insertAppSchema, insertWorkspaceSchema, insertWorkspaceMemberSchema, createTeamSchema, updateProfileSchema, githubImportSchema, zipImportSchema, templateCloneSchema } from "@shared/schema";
+import { insertProjectSchema, insertAppSchema, insertWorkspaceSchema, insertWorkspaceMemberSchema, createTeamSchema, updateProfileSchema, githubImportSchema, zipImportSchema, templateCloneSchema, planningChatSchema, modeSelectionSchema } from "@shared/schema";
+import OpenAI from 'openai';
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { z } from "zod";
 import { Octokit } from '@octokit/rest';
@@ -12,6 +13,11 @@ import fs from 'fs/promises';
 import os from 'os';
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Initialize OpenAI client
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+
   // Auth middleware setup
   await setupAuth(app);
 
@@ -1058,6 +1064,154 @@ export async function registerRoutes(app: Express): Promise<Server> {
         error: "Failed to clone template",
         message: error instanceof Error ? error.message : "An unexpected error occurred"
       });
+    }
+  });
+
+  // Planning chat routes
+  app.post('/api/chat/planning', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = planningChatSchema.parse(req.body);
+      
+      // Check if user is a member of the workspace
+      const isMember = await storage.isWorkspaceMember(validatedData.workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to workspace" });
+      }
+
+      let conversation;
+      let messages: any[] = [];
+
+      // Get or create conversation
+      if (validatedData.conversationId) {
+        conversation = await storage.getChatConversation(validatedData.conversationId);
+        if (!conversation || conversation.userId !== userId) {
+          return res.status(404).json({ error: "Conversation not found" });
+        }
+        messages = await storage.getConversationMessages(conversation.id);
+      } else {
+        // Create new conversation
+        conversation = await storage.createChatConversation({
+          userId,
+          workspaceId: validatedData.workspaceId,
+          status: 'active',
+          phase: 'planning',
+          projectIdea: validatedData.message,
+        });
+      }
+
+      // Add user message to conversation
+      const userMessage = await storage.createChatMessage({
+        conversationId: conversation.id,
+        role: 'user',
+        content: validatedData.message,
+        messageIndex: messages.length.toString(),
+      });
+
+      // Prepare conversation history for OpenAI
+      const conversationHistory = [
+        {
+          role: 'system',
+          content: `You are Replie, an AI assistant helping users plan Replit projects. You are helpful, enthusiastic, and knowledgeable about web development, coding, and project planning.
+
+Your role is to:
+1. Help users clarify their project ideas
+2. Ask thoughtful questions to understand their needs
+3. Propose comprehensive project plans with tech stacks
+4. Guide them toward choosing between Design Mode or Build Mode
+
+Keep responses conversational, friendly, and focused on planning. Ask 2-3 clarifying questions before proposing a full plan. When you have enough information, provide a detailed plan and offer the choice between Design Mode (for prototyping) or Build Mode (for full development).`
+        },
+        ...messages.map((msg: any) => ({
+          role: msg.role,
+          content: msg.content,
+        })),
+        {
+          role: 'user',
+          content: validatedData.message,
+        }
+      ];
+
+      // Get OpenAI response
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4',
+        messages: conversationHistory as any,
+        max_tokens: 500,
+        temperature: 0.7,
+      });
+
+      const assistantResponse = completion.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response. Please try again.";
+
+      // Save assistant response
+      const assistantMessage = await storage.createChatMessage({
+        conversationId: conversation.id,
+        role: 'assistant',
+        content: assistantResponse,
+        messageIndex: (messages.length + 1).toString(),
+      });
+
+      // Check if we should transition to mode selection phase
+      const shouldShowModeSelection = assistantResponse.toLowerCase().includes('design mode') && 
+                                    assistantResponse.toLowerCase().includes('build mode');
+
+      if (shouldShowModeSelection) {
+        await storage.updateChatConversation(conversation.id, {
+          phase: 'mode_selection',
+          finalPlan: assistantResponse,
+        });
+      }
+
+      res.json({
+        conversation,
+        userMessage,
+        assistantMessage,
+        showModeSelection: shouldShowModeSelection,
+      });
+
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          error: "Validation failed",
+          details: error.errors
+        });
+      }
+      console.error("Error in planning chat:", error);
+      res.status(500).json({ error: "Failed to process chat message" });
+    }
+  });
+
+  // Mode selection route
+  app.post('/api/chat/mode-selection', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = modeSelectionSchema.parse(req.body);
+      
+      const conversation = await storage.getChatConversation(validatedData.conversationId);
+      if (!conversation || conversation.userId !== userId) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+
+      // Update conversation with selected mode
+      const updatedConversation = await storage.updateChatConversation(conversation.id, {
+        selectedMode: validatedData.selectedMode,
+        phase: 'completed',
+        status: 'completed',
+      });
+
+      res.json({
+        conversation: updatedConversation,
+        message: `Great! You've selected ${validatedData.selectedMode} mode. This is where the ${validatedData.selectedMode === 'design' ? 'design editor' : 'code editor'} would open.`
+      });
+
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          error: "Validation failed",
+          details: error.errors
+        });
+      }
+      console.error("Error in mode selection:", error);
+      res.status(500).json({ error: "Failed to process mode selection" });
     }
   });
 

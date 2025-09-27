@@ -1,4 +1,4 @@
-import { type User, type UpsertUser, type InsertUser, type Project, type InsertProject, type App, type InsertApp, type Workspace, type InsertWorkspace, type WorkspaceMember, type InsertWorkspaceMember, type WorkspaceMemberWithUser, type Template, type InsertTemplate } from "@shared/schema";
+import { type User, type UpsertUser, type InsertUser, type Project, type InsertProject, type App, type InsertApp, type Workspace, type InsertWorkspace, type WorkspaceMember, type InsertWorkspaceMember, type WorkspaceMemberWithUser, type Template, type InsertTemplate, type ChatConversation, type InsertChatConversation, type ChatMessage, type InsertChatMessage } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 // modify the interface with any CRUD methods
@@ -47,6 +47,19 @@ export interface IStorage {
   getTemplatesByCategory(category: string): Promise<Template[]>;
   searchTemplates(query: string, category?: string): Promise<Template[]>;
   incrementTemplateUsage(id: string): Promise<void>;
+  
+  // Chat conversation methods
+  getChatConversation(id: string): Promise<ChatConversation | undefined>;
+  getUserChatConversations(userId: string): Promise<ChatConversation[]>;
+  createChatConversation(conversation: InsertChatConversation): Promise<ChatConversation>;
+  updateChatConversation(id: string, conversation: Partial<InsertChatConversation>): Promise<ChatConversation | undefined>;
+  deleteChatConversation(id: string): Promise<boolean>;
+  
+  // Chat message methods
+  getChatMessage(id: string): Promise<ChatMessage | undefined>;
+  getConversationMessages(conversationId: string): Promise<ChatMessage[]>;
+  createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
+  deleteChatMessage(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -56,6 +69,8 @@ export class MemStorage implements IStorage {
   private projects: Map<string, Project>;
   private apps: Map<string, App>;
   private templates: Map<string, Template>;
+  private chatConversations: Map<string, ChatConversation>;
+  private chatMessages: Map<string, ChatMessage>;
 
   constructor() {
     this.users = new Map();
@@ -64,6 +79,8 @@ export class MemStorage implements IStorage {
     this.projects = new Map();
     this.apps = new Map();
     this.templates = new Map();
+    this.chatConversations = new Map();
+    this.chatMessages = new Map();
     
     // Initialize sample data
     this.initializeSampleData();
@@ -927,6 +944,85 @@ export class MemStorage implements IStorage {
       };
       this.templates.set(id, updatedTemplate);
     }
+  }
+
+  // Chat conversation methods
+  async getChatConversation(id: string): Promise<ChatConversation | undefined> {
+    return this.chatConversations.get(id);
+  }
+
+  async getUserChatConversations(userId: string): Promise<ChatConversation[]> {
+    return Array.from(this.chatConversations.values())
+      .filter(conversation => conversation.userId === userId)
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }
+
+  async createChatConversation(conversation: InsertChatConversation): Promise<ChatConversation> {
+    const id = randomUUID();
+    const now = new Date();
+    const newConversation: ChatConversation = {
+      id,
+      userId: conversation.userId,
+      workspaceId: conversation.workspaceId,
+      status: conversation.status || 'active',
+      phase: conversation.phase || 'planning',
+      projectIdea: conversation.projectIdea || null,
+      finalPlan: conversation.finalPlan || null,
+      selectedMode: conversation.selectedMode || null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.chatConversations.set(id, newConversation);
+    return newConversation;
+  }
+
+  async updateChatConversation(id: string, conversation: Partial<InsertChatConversation>): Promise<ChatConversation | undefined> {
+    const existing = this.chatConversations.get(id);
+    if (!existing) return undefined;
+
+    const updated: ChatConversation = {
+      ...existing,
+      ...conversation,
+      updatedAt: new Date(),
+    };
+    this.chatConversations.set(id, updated);
+    return updated;
+  }
+
+  async deleteChatConversation(id: string): Promise<boolean> {
+    // Also delete all messages in this conversation
+    const messages = Array.from(this.chatMessages.values())
+      .filter(message => message.conversationId === id);
+    messages.forEach(message => this.chatMessages.delete(message.id));
+    
+    return this.chatConversations.delete(id);
+  }
+
+  // Chat message methods
+  async getChatMessage(id: string): Promise<ChatMessage | undefined> {
+    return this.chatMessages.get(id);
+  }
+
+  async getConversationMessages(conversationId: string): Promise<ChatMessage[]> {
+    return Array.from(this.chatMessages.values())
+      .filter(message => message.conversationId === conversationId)
+      .sort((a, b) => parseInt(a.messageIndex) - parseInt(b.messageIndex));
+  }
+
+  async createChatMessage(message: InsertChatMessage): Promise<ChatMessage> {
+    const id = randomUUID();
+    const now = new Date();
+    const newMessage: ChatMessage = {
+      id,
+      ...message,
+      createdAt: now,
+    };
+    this.chatMessages.set(id, newMessage);
+    return newMessage;
+  }
+
+  async deleteChatMessage(id: string): Promise<boolean> {
+    return this.chatMessages.delete(id);
   }
 }
 
