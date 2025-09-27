@@ -44,7 +44,7 @@ export function formatTimeAgo(date: Date): string {
 export const categories = [
   { id: 'web', label: 'Web app' },
   { id: 'data', label: 'Data app' },
-  { id: 'game', label: '3D Game' },
+  { id: 'game', label: 'Game' },
   { id: 'general', label: 'General' },
   { id: 'agents', label: 'Agents & Automations', badge: 'Beta' as const },
 ] as const;

@@ -111,7 +111,7 @@ function AppsContent({ searchResults = [], isSearching }: AppsProps) {
     refetch 
   } = useQuery<App[]>({
     queryKey: ['/api/workspaces', currentWorkspace?.id, 'apps'],
-    queryFn: getQueryFn(),
+    queryFn: getQueryFn({ on401: "throw" }),
     enabled: !!currentWorkspace,
     staleTime: 2 * 60 * 1000, // 2 minutes
     refetchOnWindowFocus: false,
@@ -235,7 +235,7 @@ function AppsContent({ searchResults = [], isSearching }: AppsProps) {
         return false;
       }
       
-      return isNetworkError(error) || (apiError.status && apiError.status >= 500);
+      return Boolean(isNetworkError(error) || (apiError.status && apiError.status >= 500));
     },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
   })
@@ -277,7 +277,7 @@ function AppsContent({ searchResults = [], isSearching }: AppsProps) {
         return false;
       }
       
-      return isNetworkError(error) || (apiError.status && apiError.status >= 500);
+      return Boolean(isNetworkError(error) || (apiError.status && apiError.status >= 500));
     },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
   })
@@ -320,7 +320,7 @@ function AppsContent({ searchResults = [], isSearching }: AppsProps) {
         return false;
       }
       
-      return isNetworkError(error) || (apiError.status && apiError.status >= 500);
+      return Boolean(isNetworkError(error) || (apiError.status && apiError.status >= 500));
     },
     retryDelay: 2000,
   })

@@ -21,7 +21,7 @@ const categoryIcons = {
  */
 export function CategorySelector({ selectedCategory, onCategoryChange }: CategorySelectorProps) {
   return (
-    <div className="flex flex-nowrap gap-2 overflow-x-auto">
+    <div className="flex flex-nowrap gap-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
       {categories.map((category) => {
         const IconComponent = categoryIcons[category.id];
         const isSelected = selectedCategory === category.id;
@@ -29,10 +29,15 @@ export function CategorySelector({ selectedCategory, onCategoryChange }: Categor
         return (
           <Button
             key={category.id}
-            variant={isSelected ? "ghost" : "outline"}
+            variant="outline"
             size="sm"
             onClick={() => onCategoryChange(category.id)}
-            className="flex items-center gap-2 shrink-0"
+            className={`flex items-center gap-2 shrink-0 ${
+              isSelected
+                ? 'border-2 border-[#F26207] text-[#F26207] hover:bg-[#F26207]/10'
+                : ''
+            }`}
+            style={isSelected ? { borderColor: '#F26207' } : undefined}
             data-testid={`category-${category.id}`}
           >
             <IconComponent className="w-4 h-4" />

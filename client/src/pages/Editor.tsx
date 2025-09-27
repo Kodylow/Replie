@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation, useParams } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +30,7 @@ export default function Editor() {
   // File management state
   const [activeFile, setActiveFile] = useState<string>('index.html');
   const [previewKey, setPreviewKey] = useState(0);
+  const filesLoadedRef = useRef(false);
   
   const {
     fileContents,
@@ -103,14 +104,15 @@ export default function Editor() {
     }
   }, [app]);
 
-  // Load file contents when files are available
+  // Load file contents when files are available (only once)
   useEffect(() => {
-    if (filesData?.files && app?.filesInitialized === 'true') {
+    if (filesData?.files && app?.filesInitialized === 'true' && !filesLoadedRef.current) {
+      filesLoadedRef.current = true;
       ['index.html', 'styles.css', 'script.js', 'db.json'].forEach(filename => {
         loadFileContent(filename);
       });
     }
-  }, [filesData, app, loadFileContent]);
+  }, [filesData, app]);
 
   const handleFileContentChange = (filename: string, content: string) => {
     updateFileContent(filename, content);

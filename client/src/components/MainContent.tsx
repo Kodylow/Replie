@@ -79,7 +79,7 @@ export default function MainContent({ searchResults, isSearching = false }: Main
       <div className="max-w-4xl mx-auto px-6 py-16 md:py-24">
         {/* Workspace Dropdown */}
         <div className="flex justify-center mb-8">
-          <WorkspaceDropdown onCreateTeam={() => {}} />
+          <WorkspaceDropdown onCreateTeam={() => setLocation('/teams/new')} />
         </div>
 
         {/* Greeting and Project Creation */}
@@ -96,7 +96,7 @@ export default function MainContent({ searchResults, isSearching = false }: Main
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-foreground">
-                {isSearching ? 'Search Results' : 'Recent Projects'}
+                {isSearching ? 'Search Results' : 'Recent Apps'}
               </h2>
             <button 
               onClick={() => refetch()}

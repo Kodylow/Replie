@@ -40,83 +40,92 @@ export function ProjectCreationForm({ onProjectCreated }: ProjectCreationFormPro
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4">
+    <div className="max-w-2xl mx-auto">
       {/* Project Idea Input */}
-      <div className="rounded-lg bg-background">
-        <div className="border border-border rounded-lg overflow-hidden focus-within:border-primary">
-          <Textarea
-            placeholder="Describe the idea you want to build..."
-            value={projectIdea}
-            onChange={(e) => setProjectIdea(e.target.value)}
-            className="min-h-[100px] resize-none border-0 bg-transparent text-base focus-visible:ring-0 p-4 rounded-none"
-            data-testid="input-project-idea"
-          />
+      <div className="border border-border rounded-lg overflow-hidden focus-within:border-primary">
+        <div className="rounded-lg bg-background">
+            <Textarea
+              placeholder="Describe the idea you want to build..."
+              value={projectIdea}
+              onChange={(e) => setProjectIdea(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                  e.preventDefault();
+                  if (projectIdea.trim() && !isCreating) {
+                    handleStartChat();
+                  }
+                }
+              }}
+              className="min-h-[100px] resize-none border-0 bg-transparent text-base focus-visible:ring-0 p-4 rounded-none"
+              data-testid="input-project-idea"
+            />
         </div>
-      </div>
 
-      {/* Bottom Controls */}
-      <div className="rounded-lg bg-background">
-        <div className="flex items-center justify-between px-3 py-2">
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
-              size="sm"
-              className="p-1.5 h-7 w-7"
-              data-testid="button-attach"
-            >
-              <Paperclip className="w-4 h-4" />
-            </Button>
+        {/* Bottom Controls */}
+        <div className="rounded-lg bg-background">
+          <div className="flex items-center justify-between px-3 py-2">
+            <div className="flex items-center">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="p-1.5 h-7 w-7"
+                data-testid="button-attach"
+              >
+                <Paperclip className="w-4 h-4" />
+              </Button>
+              
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="flex items-center gap-1 text-sm text-muted-foreground h-7 px-2"
+                data-testid="button-auto-theme"
+              >
+                Auto theme
+                <ChevronDown className="w-3 h-3" />
+              </Button>
+            </div>
             
-            <Button 
-              variant="ghost" 
-              size="sm"
-              className="flex items-center gap-1 text-sm text-muted-foreground h-7 px-2"
-              data-testid="button-auto-theme"
-            >
-              Auto theme
-              <ChevronDown className="w-3 h-3" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="p-1.5 h-7 w-7"
+                data-testid="button-link"
+              >
+                <Link className="w-4 h-4" />
+              </Button>
+              
+              <Button
+                size="sm"
+                onClick={handleStartChat}
+                disabled={!projectIdea.trim() || isCreating}
+                data-testid="button-start-chat"
+                className="flex items-center gap-2 h-8"
+              >
+                {isCreating ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    Start chat
+                  </>
+                )}
+              </Button>
+              
+            </div>
+            
           </div>
           
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="ghost" 
-              size="sm"
-              className="p-1.5 h-7 w-7"
-              data-testid="button-link"
-            >
-              <Link className="w-4 h-4" />
-            </Button>
-            
-            <Button
-              size="sm"
-              onClick={handleStartChat}
-              disabled={!projectIdea.trim() || isCreating}
-              data-testid="button-start-chat"
-              className="flex items-center gap-2 h-8"
-            >
-              {isCreating ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  Start chat
-                </>
-              )}
-            </Button>
-            
+          {/* Inline Category Selector (separate from bordered input) */}
+          <div className="px-3 pb-2">
+            <CategorySelector 
+              selectedCategory={selectedCategory}
+              onCategoryChange={setSelectedCategory}
+            />
           </div>
-          
-        </div>
-        {/* Inline Category Selector (separate from bordered input) */}
-        <div className="px-3 pb-2">
-          <CategorySelector 
-            selectedCategory={selectedCategory}
-            onCategoryChange={setSelectedCategory}
-          />
         </div>
       </div>
     </div>

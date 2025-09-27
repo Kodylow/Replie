@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiRequest, ApiError, isNetworkError, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -44,6 +44,19 @@ export function useFileManagement(appId: string | undefined) {
   
   // Track last saved content to detect changes
   const lastSavedContent = useRef<FileContents>({});
+  
+  // Track if files have been loaded to prevent duplicate API calls
+  const filesLoadedRef = useRef<Set<string>>(new Set());
+  
+  // Clear loaded files cache when appId changes
+  const prevAppIdRef = useRef<string | undefined>();
+  if (prevAppIdRef.current !== appId) {
+    prevAppIdRef.current = appId;
+    // Only clear if appId actually changed (not just undefined -> undefined)
+    if (prevAppIdRef.current || appId) {
+      filesLoadedRef.current.clear();
+    }
+  }
 
   // Helper function to handle file operation errors
   const handleFileError = (error: unknown, operation: string, filename?: string) => {
@@ -123,6 +136,13 @@ export function useFileManagement(appId: string | undefined) {
       return;
     }
 
+    // Prevent duplicate loading of the same file
+    const fileKey = `${appId}:${filename}`;
+    if (filesLoadedRef.current.has(fileKey)) {
+      return;
+    }
+
+    filesLoadedRef.current.add(fileKey);
     setLoadingStates(prev => ({ ...prev, [filename]: true }));
     setFileErrors(prev => ({ ...prev, [filename]: null }));
 
@@ -143,11 +163,13 @@ export function useFileManagement(appId: string | undefined) {
       };
       
     } catch (error) {
+      // Remove from loaded set on error so it can be retried
+      filesLoadedRef.current.delete(fileKey);
       handleFileError(error, 'load', filename);
     } finally {
       setLoadingStates(prev => ({ ...prev, [filename]: false }));
     }
-  }, [appId, toast, handleAuthError]);
+  }, [appId]);
 
   // Enhanced load all files function
   const loadAllFiles = useCallback(async () => {
