@@ -18,7 +18,7 @@ export default function Landing() {
         (excluding the Repl workspace. Working on it!).
         </p>
         <p className="text-muted-foreground mb-8">
-          Remix this project to suggest new features or changes.
+          Remix this project to suggest new features or changes to Replit.com 
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

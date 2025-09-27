@@ -274,12 +274,37 @@ function PlanStep({ formData, updateFormData }: { formData: TeamFormData; update
   );
 }
 
-function PaymentStep() {
+function PaymentStep({ onDevBypass }: { onDevBypass?: () => void }) {
+  const isDevelopment = import.meta.env.DEV;
+
   return (
     <div className="max-w-2xl mx-auto">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold mb-2">Enter payment information</h1>
       </div>
+
+      {isDevelopment && onDevBypass && (
+        <div className="mb-6">
+          <Card className="border-amber-200 bg-amber-50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-medium text-amber-800">Development Mode</h3>
+                  <p className="text-sm text-amber-700">Skip payment and create team directly</p>
+                </div>
+                <Button 
+                  onClick={onDevBypass}
+                  variant="outline"
+                  className="border-amber-300 bg-amber-100 text-amber-800 hover:bg-amber-200"
+                  data-testid="button-dev-bypass"
+                >
+                  Create Team (Dev)
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <div className="grid gap-6">
         <Card>
@@ -450,16 +475,20 @@ export default function TeamCreation() {
       setCurrentStep(currentStep + 1);
     } else {
       // Handle final submission - create the team
-      const teamData: CreateTeamRequest = {
-        organizationName: formData.organizationName,
-        useCase: formData.useCase,
-        description: formData.description || undefined,
-        billingEmail: formData.billingEmail,
-        inviteEmails: formData.inviteEmails || undefined,
-        plan: formData.plan,
-      };
-      createTeamMutation.mutate(teamData);
+      handleCreateTeam();
     }
+  };
+
+  const handleCreateTeam = () => {
+    const teamData: CreateTeamRequest = {
+      organizationName: formData.organizationName,
+      useCase: formData.useCase,
+      description: formData.description || undefined,
+      billingEmail: formData.billingEmail,
+      inviteEmails: formData.inviteEmails || undefined,
+      plan: formData.plan,
+    };
+    createTeamMutation.mutate(teamData);
   };
 
   const canContinue = () => {
@@ -572,7 +601,7 @@ export default function TeamCreation() {
         {currentStep === 2 && (
           <PlanStep formData={formData} updateFormData={updateFormData} />
         )}
-        {currentStep === 3 && <PaymentStep />}
+        {currentStep === 3 && <PaymentStep onDevBypass={handleCreateTeam} />}
 
         <div className="flex justify-center mt-8">
           <Button 
