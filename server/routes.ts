@@ -191,12 +191,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Project routes - prefix all routes with /api
+  // Project routes (workspace-scoped)
   
-  // Get all projects
-  app.get("/api/projects", async (req, res) => {
+  // Get workspace projects
+  app.get("/api/workspaces/:workspaceId/projects", isAuthenticated, async (req: any, res) => {
     try {
-      const projects = await storage.getAllProjects();
+      const userId = req.user.claims.sub;
+      const workspaceId = req.params.workspaceId;
+      
+      // Check if user is a member of this workspace
+      const isMember = await storage.isWorkspaceMember(workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to workspace" });
+      }
+      
+      const projects = await storage.getWorkspaceProjects(workspaceId);
       res.json(projects);
     } catch (error) {
       console.error("Error fetching projects:", error);
@@ -205,12 +214,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get project by ID
-  app.get("/api/projects/:id", async (req, res) => {
+  app.get("/api/projects/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const project = await storage.getProject(req.params.id);
       if (!project) {
         return res.status(404).json({ error: "Project not found" });
       }
+      
+      // Check if user is a member of the project's workspace
+      const isMember = await storage.isWorkspaceMember(project.workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to project" });
+      }
+      
       res.json(project);
     } catch (error) {
       console.error("Error fetching project:", error);
@@ -219,9 +236,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create new project
-  app.post("/api/projects", async (req, res) => {
+  app.post("/api/workspaces/:workspaceId/projects", isAuthenticated, async (req: any, res) => {
     try {
-      const validatedData = insertProjectSchema.parse(req.body);
+      const userId = req.user.claims.sub;
+      const workspaceId = req.params.workspaceId;
+      
+      // Check if user is a member of this workspace
+      const isMember = await storage.isWorkspaceMember(workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to workspace" });
+      }
+      
+      const validatedData = insertProjectSchema.parse({
+        ...req.body,
+        workspaceId
+      });
       const project = await storage.createProject(validatedData);
       res.status(201).json(project);
     } catch (error) {
@@ -237,14 +266,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update project
-  app.patch("/api/projects/:id", async (req, res) => {
+  app.patch("/api/projects/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const updates = insertProjectSchema.partial().parse(req.body);
-      const project = await storage.updateProject(req.params.id, updates);
+      const userId = req.user.claims.sub;
+      const project = await storage.getProject(req.params.id);
       if (!project) {
         return res.status(404).json({ error: "Project not found" });
       }
-      res.json(project);
+      
+      // Check if user is a member of the project's workspace
+      const isMember = await storage.isWorkspaceMember(project.workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to project" });
+      }
+      
+      // Remove workspaceId from updates to prevent workspace reassignment
+      const { workspaceId: _, ...updates } = insertProjectSchema.partial().parse(req.body);
+      const updatedProject = await storage.updateProject(req.params.id, updates);
+      res.json(updatedProject);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ 
@@ -258,12 +297,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete project
-  app.delete("/api/projects/:id", async (req, res) => {
+  app.delete("/api/projects/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const success = await storage.deleteProject(req.params.id);
-      if (!success) {
+      const userId = req.user.claims.sub;
+      const project = await storage.getProject(req.params.id);
+      if (!project) {
         return res.status(404).json({ error: "Project not found" });
       }
+      
+      // Check if user is a member of the project's workspace
+      const isMember = await storage.isWorkspaceMember(project.workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to project" });
+      }
+      
+      const success = await storage.deleteProject(req.params.id);
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting project:", error);
@@ -271,10 +319,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Search projects
-  app.get("/api/projects/search/:query", async (req, res) => {
+  // Search projects in workspace
+  app.get("/api/workspaces/:workspaceId/projects/search/:query", isAuthenticated, async (req: any, res) => {
     try {
-      const projects = await storage.searchProjects(req.params.query);
+      const userId = req.user.claims.sub;
+      const workspaceId = req.params.workspaceId;
+      
+      // Check if user is a member of this workspace
+      const isMember = await storage.isWorkspaceMember(workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to workspace" });
+      }
+      
+      const projects = await storage.searchProjects(workspaceId, req.params.query);
       res.json(projects);
     } catch (error) {
       console.error("Error searching projects:", error);
@@ -282,12 +339,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // App routes
+  // App routes (workspace-scoped)
   
-  // Get all apps
-  app.get("/api/apps", async (req, res) => {
+  // Get workspace apps
+  app.get("/api/workspaces/:workspaceId/apps", isAuthenticated, async (req: any, res) => {
     try {
-      const apps = await storage.getAllApps();
+      const userId = req.user.claims.sub;
+      const workspaceId = req.params.workspaceId;
+      
+      // Check if user is a member of this workspace
+      const isMember = await storage.isWorkspaceMember(workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to workspace" });
+      }
+      
+      const apps = await storage.getWorkspaceApps(workspaceId);
       res.json(apps);
     } catch (error) {
       console.error("Error fetching apps:", error);
@@ -296,12 +362,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get app by ID
-  app.get("/api/apps/:id", async (req, res) => {
+  app.get("/api/apps/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const app = await storage.getApp(req.params.id);
       if (!app) {
         return res.status(404).json({ error: "App not found" });
       }
+      
+      // Check if user is a member of the app's workspace
+      const isMember = await storage.isWorkspaceMember(app.workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to app" });
+      }
+      
       res.json(app);
     } catch (error) {
       console.error("Error fetching app:", error);
@@ -310,9 +384,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create new app
-  app.post("/api/apps", async (req, res) => {
+  app.post("/api/workspaces/:workspaceId/apps", isAuthenticated, async (req: any, res) => {
     try {
-      const validatedData = insertAppSchema.parse(req.body);
+      const userId = req.user.claims.sub;
+      const workspaceId = req.params.workspaceId;
+      
+      // Check if user is a member of this workspace
+      const isMember = await storage.isWorkspaceMember(workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to workspace" });
+      }
+      
+      const validatedData = insertAppSchema.parse({
+        ...req.body,
+        workspaceId
+      });
       const app = await storage.createApp(validatedData);
       res.status(201).json(app);
     } catch (error) {
@@ -328,14 +414,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update app
-  app.patch("/api/apps/:id", async (req, res) => {
+  app.patch("/api/apps/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const updates = insertAppSchema.partial().parse(req.body);
-      const app = await storage.updateApp(req.params.id, updates);
+      const userId = req.user.claims.sub;
+      const app = await storage.getApp(req.params.id);
       if (!app) {
         return res.status(404).json({ error: "App not found" });
       }
-      res.json(app);
+      
+      // Check if user is a member of the app's workspace
+      const isMember = await storage.isWorkspaceMember(app.workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to app" });
+      }
+      
+      // Remove workspaceId from updates to prevent workspace reassignment
+      const { workspaceId: _, ...updates } = insertAppSchema.partial().parse(req.body);
+      const updatedApp = await storage.updateApp(req.params.id, updates);
+      res.json(updatedApp);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ 
@@ -349,12 +445,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete app
-  app.delete("/api/apps/:id", async (req, res) => {
+  app.delete("/api/apps/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const success = await storage.deleteApp(req.params.id);
-      if (!success) {
+      const userId = req.user.claims.sub;
+      const app = await storage.getApp(req.params.id);
+      if (!app) {
         return res.status(404).json({ error: "App not found" });
       }
+      
+      // Check if user is a member of the app's workspace
+      const isMember = await storage.isWorkspaceMember(app.workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to app" });
+      }
+      
+      const success = await storage.deleteApp(req.params.id);
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting app:", error);
@@ -362,10 +467,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Search apps
-  app.get("/api/apps/search/:query", async (req, res) => {
+  // Search apps in workspace
+  app.get("/api/workspaces/:workspaceId/apps/search/:query", isAuthenticated, async (req: any, res) => {
     try {
-      const apps = await storage.searchApps(req.params.query);
+      const userId = req.user.claims.sub;
+      const workspaceId = req.params.workspaceId;
+      
+      // Check if user is a member of this workspace
+      const isMember = await storage.isWorkspaceMember(workspaceId, userId);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied to workspace" });
+      }
+      
+      const apps = await storage.searchApps(workspaceId, req.params.query);
       res.json(apps);
     } catch (error) {
       console.error("Error searching apps:", error);
