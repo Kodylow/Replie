@@ -144,7 +144,19 @@ function AppContent() {
     );
   }
 
-  // Desktop Layout (existing)
+  // Desktop Layout
+  // If we're on the planning page, show fullscreen without sidebar
+  if (location === '/planning') {
+    return (
+      <div className="h-screen flex flex-col bg-background">
+        <div className="flex-1 overflow-hidden">
+          <Router searchResults={searchResults} isSearching={isSearching} />
+        </div>
+      </div>
+    );
+  }
+
+  // Default desktop layout with sidebar
   return (
     <div className="h-screen flex bg-background">
       <Sidebar 
