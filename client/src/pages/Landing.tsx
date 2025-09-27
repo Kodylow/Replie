@@ -12,7 +12,7 @@ export default function Landing() {
         </div>
 
         <h1 className="text-3xl font-bold text-foreground mb-3">
-          Kody’s Remix-able Replit Prototype
+          Replie - Prototyping Template for Replit.com
         </h1>
         <p className="text-muted-foreground mb-2">
         (excluding the Repl workspace. Working on it!).

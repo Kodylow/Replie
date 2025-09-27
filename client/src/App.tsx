@@ -96,6 +96,9 @@ function AppContent() {
 
   // Check if we're on a special page that should bypass mobile tabs
   const isSpecialPage = location === '/planning' || location.startsWith('/editor/') || location.startsWith('/project/') || location === '/import' || location === '/account'
+  
+  // Check if we're on the editor page (desktop and mobile)
+  const isEditorPage = location.startsWith('/editor/')
 
   const handleSearchResults = (results: Project[]) => {
     setSearchResults(results)
