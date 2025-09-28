@@ -253,7 +253,6 @@ MIT License - Feel free to use this project as inspiration for your own Replit f
 
 - **Replit Team** - For creating an amazing development platform
 - **shadcn** - For the excellent UI component library
-- **Vercel** - For inspiring modern web development patterns
 - **Open Source Community** - For the countless libraries that make this possible
 
 ---
