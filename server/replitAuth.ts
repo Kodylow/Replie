@@ -78,10 +78,12 @@ async function upsertUser(
   // Create personal workspace if it doesn't exist
   if (!hasPersonalWorkspace) {
     const personalWorkspaceName = `${firstName}'s Workspace`;
+    // Generate unique slug using user ID to avoid collisions
+    const uniqueSlug = `${firstName.toLowerCase()}-workspace-${userId.slice(0, 8)}`;
     const personalWorkspace = await storage.createWorkspace({
       name: personalWorkspaceName,
       type: 'personal',
-      slug: `${firstName.toLowerCase()}-workspace`,
+      slug: uniqueSlug,
     });
     
     // Add user as owner of their personal workspace

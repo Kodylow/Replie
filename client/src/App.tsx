@@ -28,6 +28,7 @@ import Planning from "@/pages/Planning";
 import Editor from "@/pages/Editor";
 import NotFound from "@/pages/not-found";
 import ProjectDetail from "@/pages/ProjectDetail";
+import Integrations from "@/pages/Integrations";
 import type { Project } from '@shared/schema'
 
 function Router({ searchResults, isSearching }: { searchResults: Project[], isSearching: boolean }) {
@@ -57,6 +58,7 @@ function Router({ searchResults, isSearching }: { searchResults: Project[], isSe
           <Route path="/members">
             <Members searchResults={searchResults} isSearching={isSearching} />
           </Route>
+          <Route path="/integrations" component={Integrations} />
           <Route path="/account" component={Account} />
           <Route path="/teams/new" component={TeamCreation} />
           <Route path="/import" component={Import} />

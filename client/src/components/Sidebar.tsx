@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from 'wouter'
-import { Search, Home, FolderOpen, Package, Globe, Users, UserCheck, Settings, BookOpen, ExternalLink, Plus, Upload, BarChart3, LogOut, Bell, User as UserIcon, TerminalSquare, HelpCircle, Palette } from 'lucide-react'
+import { Search, Home, FolderOpen, Package, Globe, Users, UserCheck, Settings, BookOpen, ExternalLink, Plus, Upload, BarChart3, LogOut, Bell, User as UserIcon, TerminalSquare, HelpCircle, Palette, Puzzle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -307,6 +307,16 @@ export default function Sidebar({ onSearchResults, onClearSearch }: SidebarProps
           active={location === '/published-apps'}
           onClick={() => setLocation('/published-apps')}
         />
+        
+        {/* Only show Integrations for personal workspaces */}
+        {currentWorkspace?.type === 'personal' && (
+          <NavItem 
+            icon={Puzzle} 
+            label="Integrations" 
+            active={location === '/integrations'}
+            onClick={() => setLocation('/integrations')} 
+          />
+        )}
         
         {/* Only show Manage Organization for team workspaces */}
         {currentWorkspace?.type === 'team' && (
